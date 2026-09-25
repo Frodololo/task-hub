@@ -9,7 +9,10 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test:integration:run": "node --experimental-vm-modules node_modules/.bin/jest --config jest.integration.config.mjs --runInBand",
+    "test:integration": "firebase emulators:exec --only firestore --project demo-task-hub \"npm run test:integration:run\"",
+    "test:all": "npm test && npm run test:integration"
   },
   "license": "ISC",
   "dependencies": {
@@ -20,6 +23,7 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^22.20.2",
+    "firebase-tools": "^15.25.0",
     "jest": "^30.5.1",
     "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
