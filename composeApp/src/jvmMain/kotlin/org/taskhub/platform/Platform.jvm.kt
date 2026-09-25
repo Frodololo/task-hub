@@ -78,6 +78,9 @@ actual fun launchGoogleSignIn() {
     }
 }
 
+/** Desktop no distingue motivos de fallo — ver KDoc de [consumeLastSignInFailureReason] en Platform.kt. */
+actual fun consumeLastSignInFailureReason(): String? = null
+
 /** JVM: Google Sign-In no soportado — siempre devuelve null (sin token). */
 actual suspend fun getGoogleCalendarAccessToken(): String? {
     // JVM: Google Sign-In not supported — no-op

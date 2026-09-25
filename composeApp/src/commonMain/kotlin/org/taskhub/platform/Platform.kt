@@ -51,6 +51,21 @@ expect val hasNotificationSupport: Boolean
 expect fun launchGoogleSignIn()
 
 /**
+ * Motivo específico (si se conoce) del último fallo/cancelación de
+ * [launchGoogleSignIn] reportado con un token vacío, consumiéndolo (lecturas
+ * repetidas devuelven `null` hasta el próximo fallo). `null` = sin motivo
+ * específico (cancelación normal del usuario) o plataforma sin esta
+ * distinción (Android/iOS/JVM: [GoogleSignInResultHolder] siempre ha
+ * contratado token vacío = cancelado, sin más detalle).
+ *
+ * Solo wasmJs distingue motivos hoy — ver `Platform.wasmJs.kt` — porque solo
+ * ahí el origin/carga de la librería (GIS) puede fallar de formas que no son
+ * "el usuario canceló" (Android/iOS validan el cliente OAuth en tiempo de
+ * compilación/consola de Firebase, no en cada intento).
+ */
+expect fun consumeLastSignInFailureReason(): String?
+
+/**
  * Obtiene (o refresca de forma transparente) un **access token** OAuth de
  * Google Calendar para la cuenta vinculada, pidiendo consentimiento con UI
  * nativa si hace falta. Devuelve null si no hay cuenta vinculada o si no se

@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.platform.GoogleSignInResultHolder
+import org.taskhub.platform.consumeLastSignInFailureReason
 import org.taskhub.platform.getGoogleCalendarAccessToken
 import org.taskhub.platform.launchGoogleSignIn
 import org.taskhub.platform.revokeGoogleCalendarAccess
@@ -113,11 +114,28 @@ class GoogleAuthManager(
                     // null = en curso (aún no resuelto); no hacer nada.
                     token == null -> Unit
                     // "" = cancelado / sin token → volver a SignedOut para no
-                    // quedarse colgado en "Conectando con Google...".
+                    // quedarse colgado en "Conectando con Google...", SALVO
+                    // que la plataforma reporte un motivo específico de fallo
+                    // (hoy solo wasmJs — ver `Platform.wasmJs.kt`/`index.html`):
+                    // el error actual en web era silencioso (D4/item 4).
                     token.isEmpty() -> {
                         signInTimeoutJob?.cancel()
                         GoogleSignInResultHolder.reset()
-                        _state.value = GoogleAuthState.SignedOut
+                        _state.value = when (consumeLastSignInFailureReason()) {
+                            "gis_not_loaded" -> {
+                                consecutiveSignInFailures++
+                                GoogleAuthState.Error(
+                                    AppStrings.get("google_auth_error_gis_not_loaded", settingsStore.getLanguage())
+                                )
+                            }
+                            "origin_not_authorized" -> {
+                                consecutiveSignInFailures++
+                                GoogleAuthState.Error(
+                                    AppStrings.get("google_auth_error_origin_not_authorized", settingsStore.getLanguage())
+                                )
+                            }
+                            else -> GoogleAuthState.SignedOut
+                        }
                     }
                     else -> {
                         signInTimeoutJob?.cancel()

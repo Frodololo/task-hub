@@ -60,6 +60,14 @@ private external fun jsGoogleSignInDone(): Boolean
 @JsFun("() => (window.__taskhubGis && window.__taskhubGis.value) ? window.__taskhubGis.value : ''")
 private external fun jsGoogleSignInValue(): String
 
+/** Motivo específico del fallo (`\"gis_not_loaded\"`/`\"origin_not_authorized\"`), o `\"\"` — ver `index.html`. */
+@JsFun("() => (window.__taskhubGis && window.__taskhubGis.reason) ? window.__taskhubGis.reason : ''")
+private external fun jsGoogleSignInReason(): String
+
+/** Limpia el motivo tras consumirlo (ver [consumeLastSignInFailureReason]), para no reportarlo dos veces. */
+@JsFun("() => { if (window.__taskhubGis) window.__taskhubGis.reason = ''; }")
+private external fun jsClearGoogleSignInReason()
+
 /**
  * Scope propio (no el de [org.taskhub.ui.models.GoogleAuthManager], que vive
  * en commonMain y no conoce este polling) para el sondeo de
@@ -104,6 +112,18 @@ actual fun launchGoogleSignIn() {
         val token = if (jsGoogleSignInDone()) jsGoogleSignInValue() else ""
         GoogleSignInResultHolder.setResult(token)
     }
+}
+
+/**
+ * Web: expone el motivo específico (si lo hay) del último fallo con token
+ * vacío, poblado por `index.html` — ver KDoc del `expect` en `Platform.kt`.
+ * Se limpia al leerlo para que un cancel/timeout posterior sin motivo
+ * específico no reporte por error el motivo de un fallo anterior.
+ */
+actual fun consumeLastSignInFailureReason(): String? {
+    val reason = jsGoogleSignInReason()
+    jsClearGoogleSignInReason()
+    return reason.ifEmpty { null }
 }
 
 /** Web: Google Sign-In no soportado todavía — siempre devuelve null (sin token). */

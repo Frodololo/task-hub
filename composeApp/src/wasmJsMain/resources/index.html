@@ -26,12 +26,25 @@
         // forma fiable, así que el puente vive enteramente en JS: guarda el
         // resultado en `window.__taskhubGis` y Kotlin lo sondea por polling
         // (ver `jsGoogleSignInDone`/`jsGoogleSignInValue`).
-        window.__taskhubGis = { state: "idle", value: "" };
+        // `reason` (consumido por `consumeLastSignInFailureReason` en
+        // Platform.wasmJs.kt) distingue, cuando `value` queda vacío, entre
+        // una cancelación normal del usuario ("") y un fallo real que merece
+        // un mensaje específico: "gis_not_loaded" (la librería GIS no cargó)
+        // u "origin_not_authorized" (el origin/client_id no está autorizado
+        // en la consola de Google) — ver GoogleAuthManager.kt.
+        window.__taskhubGis = { state: "idle", value: "", reason: "" };
 
         function __taskhubGisCredentialCallback(response) {
             window.__taskhubGis.value = (response && response.credential) ? response.credential : "";
+            window.__taskhubGis.reason = "";
             window.__taskhubGis.state = "done";
         }
+
+        // Motivos de `getNotDisplayedReason()`/`getSkippedReason()` que
+        // indican una configuración rota (origin/client_id no autorizado en
+        // la consola de Google) en vez de una decisión del usuario — ver
+        // https://developers.google.com/identity/gsi/web/reference/js-reference#PromptMomentNotification.
+        var __taskhubGisConfigReasons = ["unregistered_origin", "invalid_client", "missing_client_id"];
 
         // El callback de `initialize` SOLO se invoca si el usuario completa el
         // login; sin este segundo callback de `prompt`, cerrar el selector de
@@ -42,7 +55,19 @@
             try {
                 if (window.__taskhubGis.state === "pending" &&
                     (notification.isNotDisplayed() || notification.isSkippedMoment() || notification.isDismissedMoment())) {
+                    var reason = "";
+                    try {
+                        var rawReason = notification.isNotDisplayed()
+                            ? notification.getNotDisplayedReason()
+                            : (notification.isSkippedMoment() ? notification.getSkippedReason() : null);
+                        if (rawReason && __taskhubGisConfigReasons.indexOf(rawReason) !== -1) {
+                            reason = "origin_not_authorized";
+                        }
+                    } catch (inner) {
+                        // Sin el detalle del motivo, se trata como cancelación normal.
+                    }
                     window.__taskhubGis.value = "";
+                    window.__taskhubGis.reason = reason;
                     window.__taskhubGis.state = "done";
                 }
             } catch (e) {
@@ -55,6 +80,14 @@
         function __taskhubStartGoogleSignIn(clientId) {
             window.__taskhubGis.state = "pending";
             window.__taskhubGis.value = "";
+            window.__taskhubGis.reason = "";
+            var attempts = 0;
+            // Tope de reintentos esperando a que cargue `accounts.google.com/gsi/client`
+            // (script `async defer`): 5s (50 * 100ms). Si nunca llega (red
+            // bloqueada, CSP, adblocker), antes este bucle esperaba para
+            // siempre y el usuario solo veía el timeout genérico de 60s de
+            // GoogleAuthManager sin ninguna pista de la causa real.
+            var maxAttempts = 50;
             function tryInit() {
                 if (window.google && window.google.accounts && window.google.accounts.id) {
                     window.google.accounts.id.initialize({
@@ -63,9 +96,12 @@
                         auto_select: false
                     });
                     window.google.accounts.id.prompt(__taskhubGisNotificationCallback);
+                } else if (attempts >= maxAttempts) {
+                    window.__taskhubGis.value = "";
+                    window.__taskhubGis.reason = "gis_not_loaded";
+                    window.__taskhubGis.state = "done";
                 } else {
-                    // El script de GIS es `async defer`: puede no haber cargado
-                    // todavía cuando el usuario pulsa "Iniciar sesión".
+                    attempts += 1;
                     setTimeout(tryInit, 100);
                 }
             }

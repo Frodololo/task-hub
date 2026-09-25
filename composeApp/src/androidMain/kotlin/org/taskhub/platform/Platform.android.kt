@@ -69,6 +69,9 @@ actual fun launchGoogleSignIn() {
     GoogleSignInHelper.launch(context)
 }
 
+/** Android no distingue motivos de fallo — ver KDoc de [consumeLastSignInFailureReason] en Platform.kt. */
+actual fun consumeLastSignInFailureReason(): String? = null
+
 /** Delega en [GoogleCalendarAuthHelper] para obtener/refrescar el access token de Calendar. */
 actual suspend fun getGoogleCalendarAccessToken(): String? {
     val context = AndroidContextHolder.context ?: return null

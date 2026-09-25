@@ -111,6 +111,9 @@ actual fun launchGoogleSignIn() {
     }
 }
 
+/** iOS no distingue motivos de fallo — ver KDoc de [consumeLastSignInFailureReason] en Platform.kt. */
+actual fun consumeLastSignInFailureReason(): String? = null
+
 /**
  * Implementación iOS del `expect` [getGoogleCalendarAccessToken] (`platform/Platform.kt`).
  *
