@@ -120,3 +120,80 @@ preferible a perder todas las asignaciones.
 
 `TaskScreenModel.updateTask` se actualizó para llamar a `replaceAssignments`
 en vez de las dos funciones por separado.
+
+## Añadido (2026-09-25) — Concurrencia optimista en `updateTask`
+
+Tarjeta kanban "Red updateTask": `TaskRepository.updateTask` reescribía el
+documento completo de la tarea sin ninguna protección frente a escrituras
+concurrentes — dos miembros editando la MISMA tarea casi a la vez (uno
+cambia el título, otro los puntos) sufrían last-writer-wins puro: el segundo
+PATCH en llegar pisaba el documento entero con su propia foto, revirtiendo
+en silencio el cambio del primero.
+
+**Implementado** (patrón de cliente, NO transacción server-side — mismo
+motivo que el resto de este documento): se aplicó el mismo patrón ya
+existente en `addMemberPoints`/`addMemberAchievement`/`updateSubtasks`
+(`currentDocument.updateTime` como precondición de la escritura REST
+individual). Cada intento relee el documento para obtener su `updateTime`
+fresco y repite el mismo PATCH; si Firestore rechaza la escritura
+(`FAILED_PRECONDITION`/`ABORTED`, es decir, otro escritor ganó la carrera
+entretanto) se reintenta hasta `FirestoreClient.OPTIMISTIC_WRITE_MAX_RETRIES`
+(3) veces. A diferencia de `updateSubtasks` (que recalcula su array sobre el
+documento fresco en cada intento), aquí los campos a escribir ya son el
+estado final decidido por quien edita — no dependen del documento leído, así
+que "re-aplicar cambios locales" en el reintento es, en la práctica, repetir
+el mismo PATCH con una precondición nueva.
+
+Si se agotan los 3 intentos, se lanza `TaskConflictException` (nueva, en
+`network/TaskRepository.kt`) en vez de la `FirestoreException` cruda;
+`TaskScreenModel.updateTask` la captura por tipo (mismo patrón que
+`InsufficientBalanceException` en `MemberScreenModel.redeemReward`) y muestra
+el mensaje específico `task_error_conflict` ("La tarea fue modificada por
+otro miembro. Recarga e inténtalo de nuevo.", ES/EN en `AppStrings.kt`),
+recargando además el detalle para que la UI muestre la versión real en vez
+de los campos que el usuario intentó guardar sin éxito.
+
+## Añadido (2026-09-25) — `createTask` + `assignTask` no atómico
+
+Tarjeta kanban "Red createTask+assign": `TaskScreenModel.createTask` crea la
+tarea (`repo.createTask`) y la asigna (`repo.assignTask`) como dos
+escrituras REST independientes. Si la segunda falla — de red, a mitad de
+camino con solo algunos de varios miembros ya asignados, o directamente
+antes de crear ninguna asignación — la tarea queda huérfana: creada pero sin
+nadie asignado, invisible como pendiente para cualquiera y solo recuperable
+reeditándola a mano.
+
+**Opción evaluada y descartada — A (fusionar en una sola escritura):** no
+hay forma de crear la tarea Y sus documentos de asignación (subcolección
+`tasks/{id}/assignments`, con su propio `dueDate`/`status`/`mandatory` por
+miembro) en una única petición REST sin el endpoint transaccional `:commit`
+— ya descartado en este mismo documento por falta de acceso a un proyecto
+Firestore real/emulador contra el que verificar el payload. Embeber los
+datos de asignación como campos denormalizados en el propio documento de
+tarea (variante de "A" sin `:commit`) exigiría además una migración de todo
+el camino de lectura (`getAssignments`/`getAllAssignments`, notificaciones
+de asignación, sincronización de Calendar, todo lo que hoy asume
+`assignments` como subcolección) para un problema que no lo requiere.
+
+**Opción evaluada y descartada — B (Cloud Function `createTaskAndAssign`):**
+descartada por el mismo motivo que "A" con `:commit": añadir infraestructura
+nueva (con su propio despliegue/latencia) para un caso cuya mitigación de
+cliente ya dispone de primitivas idempotentes y ya probadas
+(`deleteAssignments`/`deleteTask`) — desproporcionado para el encargo.
+
+**Implementado — variante de C (compensación inmediata, no reconciliación
+diferida):** en vez de un worker en segundo plano que detecte tareas
+huérfanas más tarde, `TaskScreenModel` deshace la creación EN EL MOMENTO si
+`assignTask` falla: nueva función `rollbackUnassignedTask` que borra (best-
+effort) las asignaciones parciales que sí llegaron a crearse y, después, la
+propia tarea — dejando el estado tal como estaba ANTES de intentar crearla,
+en vez de "creada pero sin asignar". El error original de `assignTask` se
+sigue propagando al caller (mensaje `task_error_creating` ya existente: "No
+se pudo crear la tarea", coherente con el resultado neto tras el rollback).
+
+Sigue sin ser atómico de extremo a extremo: si el propio rollback falla
+(p. ej. se pierde la conexión justo en ese instante), la tarea huérfana
+queda exactamente igual que ANTES de este fix — nunca peor, pero tampoco
+garantizado. Sin acceso a un emulador de Firestore para verificar un
+`:commit` real, esta compensación de cliente es la mitigación más fuerte que
+se puede implementar y probar con confianza hoy.

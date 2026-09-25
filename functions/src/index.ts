@@ -8,3 +8,4 @@ export { completeAssignment } from "./completeAssignment.js";
 export { reassignTaskCompletion } from "./reassignTaskCompletion.js";
 export { undoTaskCompletion } from "./undoTaskCompletion.js";
 export { reconcileMissingTaskPointsScheduled as reconcileMissingTaskPoints } from "./reconcileMissingTaskPoints.js";
+export { purgeOldRecordsScheduled as purgeOldRecords } from "./purgeOldRecords.js";

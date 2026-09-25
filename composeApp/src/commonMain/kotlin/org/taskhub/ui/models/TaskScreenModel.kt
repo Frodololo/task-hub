@@ -18,6 +18,7 @@ import org.taskhub.network.ErrorCategory
 import org.taskhub.network.errorCategory
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.StreakRules
+import org.taskhub.network.TaskConflictException
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.i18n.toUserMessage
 import org.taskhub.network.models.TaskResponse
@@ -400,15 +401,28 @@ class TaskScreenModel(
                     repo.getMembers(householdId).map { it.id }
                 }
                 if (membersToAssign.isNotEmpty()) {
-                    val created = repo.assignTask(
-                        householdId = householdId,
-                        taskId = task.id,
-                        memberIds = membersToAssign,
-                        mandatory = mandatory,
-                        dueDate = dueDate,
-                        taskTitle = title,
-                        assignedByMemberId = createdBy
-                    )
+                    // Mitigación de atomicidad createTask+assignTask (ver KDoc
+                    // de [rollbackUnassignedTask]): son dos escrituras REST
+                    // independientes — si esta segunda falla (aunque sea a
+                    // mitad de camino, con solo algunos miembros ya
+                    // asignados), se deshace la tarea recién creada en vez de
+                    // dejarla huérfana sin asignar.
+                    val created = try {
+                        repo.assignTask(
+                            householdId = householdId,
+                            taskId = task.id,
+                            memberIds = membersToAssign,
+                            mandatory = mandatory,
+                            dueDate = dueDate,
+                            taskTitle = title,
+                            assignedByMemberId = createdBy
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        rollbackUnassignedTask(householdId, task.id)
+                        throw e
+                    }
                     syncCalendarOnAssigned(householdId, created)
                 }
 
@@ -432,6 +446,44 @@ class TaskScreenModel(
                 )
                 buzz(HapticKind.ERROR)
             }
+        }
+    }
+
+    /**
+     * Deshace una tarea recién creada cuya asignación inicial ([createTask])
+     * falló: `repo.createTask` + `repo.assignTask` son dos escrituras REST
+     * independientes (no hay endpoint `:commit` verificable desde este
+     * cliente — ver `docs/atomicidad-commit-pendiente.md` para el motivo, ya
+     * evaluado y descartado), así que un fallo de red justo entre ambas (o a
+     * mitad de `assignTask`, con solo algunos de varios miembros ya
+     * asignados) dejaba una tarea "huérfana": creada, pero sin ningún miembro
+     * asignado — invisible como pendiente para nadie, solo recuperable
+     * reeditándola a mano.
+     *
+     * Compensación, no transacción real (best-effort, igual que el resto de
+     * cascades de este archivo/`FirestoreRepository`): borra primero las
+     * asignaciones parciales que sí llegaron a crearse y, después, la propia
+     * tarea — dejando el estado tal como estaba ANTES de intentar crearla, en
+     * vez de "creada pero sin asignar". Si el propio rollback falla (p. ej.
+     * sin conexión en ese instante), la tarea huérfana queda igual que antes
+     * de este fix — limitación conocida, nunca peor que el comportamiento
+     * previo. El error original de `assignTask` es el que se propaga al
+     * caller (ver [createTask]), no uno de este rollback.
+     */
+    private suspend fun rollbackUnassignedTask(householdId: String, taskId: String) {
+        try {
+            repo.deleteAssignments(householdId, taskId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Best-effort: intentamos borrar la tarea igualmente.
+        }
+        try {
+            repo.deleteTask(householdId, taskId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // No crítico: ver KDoc de la función (limitación conocida).
         }
     }
 
@@ -1053,6 +1105,19 @@ class TaskScreenModel(
                 loadTaskDetail(householdId, taskId)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: TaskConflictException) {
+                // Por tipo, no por e.message (fijo en español desde el repo)
+                // — mismo patrón que InsufficientBalanceException en
+                // MemberScreenModel.redeemReward. Ver KDoc de
+                // [org.taskhub.network.TaskRepository.updateTask]: la tarea
+                // fue editada por otro miembro entre nuestra lectura y
+                // escritura, repetidamente, hasta agotar los reintentos de
+                // concurrencia optimista.
+                _actionState.value = TaskActionState.Error(s("task_error_conflict"))
+                // Recargar el detalle para que la UI muestre la versión real
+                // (la de quien ganó la carrera) en vez de dejar en pantalla
+                // los campos que el usuario intentó guardar sin éxito.
+                loadTaskDetail(householdId, taskId)
             } catch (e: Exception) {
                 _actionState.value = TaskActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_updating")

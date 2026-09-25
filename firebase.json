@@ -6,5 +6,16 @@
   "functions": {
     "source": "functions",
     "runtime": "nodejs20"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8180
+    },
+    "functions": {
+      "port": 5501
+    },
+    "ui": {
+      "enabled": false
+    }
   }
 }
