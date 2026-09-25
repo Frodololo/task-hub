@@ -214,13 +214,22 @@ class HomeScreen : Screen {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
-                        Text(
-                            s("home_pending_count_summary")
-                                .replace("%1", uiState.pendingCount.toString())
-                                .replace("%2", households.size.toString()),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text(
+                                s("home_pending_count_summary")
+                                    .replace("%1", uiState.pendingCount.toString())
+                                    .replace("%2", households.size.toString()),
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     val personal = households.find { it.isPersonal }
