@@ -275,11 +275,31 @@ private fun MemberCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = if (member.role == "admin") s("member_role_admin_full") else s("member_role_child_full"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = if (member.role == "admin") s("member_role_admin_full") else s("member_role_child_full"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        // Indicador visual de perfil "hijo/a" sin cuenta de
+                        // Google vinculada (member.userId == null) — antes no
+                        // había forma de distinguirlo de un miembro con cuenta
+                        // solo mirando la lista.
+                        if (member.userId == null) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                shape = MaterialTheme.shapes.extraSmall,
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Text(
+                                    text = s("member_no_account_badge"),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Points badge — mismo aspecto visual que PointsBadge(BadgeTone.Coral),

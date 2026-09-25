@@ -230,7 +230,7 @@ class MainActivity : ComponentActivity() {
                 if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
                     appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)
                 ) {
-                    Log.i(TAG, "In-App Update: actualización inmediata disponible. Lanzando flujo.")
+                    AppLog.d(TAG, "In-App Update: actualización inmediata disponible. Lanzando flujo.")
                     val started = appUpdateManager.startUpdateFlowForResult(
                         appUpdateInfo,
                         appUpdateLauncher,
@@ -240,7 +240,7 @@ class MainActivity : ComponentActivity() {
                         AppLog.w(TAG, "In-App Update: no se pudo lanzar el flujo de actualización.")
                     }
                 } else {
-                    Log.i(TAG, "In-App Update: sin actualización disponible (o no permite IMMEDIATE).")
+                    AppLog.d(TAG, "In-App Update: sin actualización disponible (o no permite IMMEDIATE).")
                 }
             }
             .addOnFailureListener { e ->

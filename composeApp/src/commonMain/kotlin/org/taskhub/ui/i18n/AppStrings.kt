@@ -378,6 +378,8 @@ object AppStrings {
 
             // Splash
             "splash_subtitle" to "Organiza tu espacio, comparte las tareas",
+            "splash_bootstrap_error_title" to "No se pudo cargar tus datos. Comprueba tu conexión.",
+            "splash_bootstrap_error_retry" to "Reintentar",
 
             // Explorar (ExploreScreen.kt)
             "explore_title" to "Explorar",
@@ -1072,6 +1074,8 @@ object AppStrings {
 
             // Splash
             "splash_subtitle" to "Organize your space, share the tasks",
+            "splash_bootstrap_error_title" to "Couldn't load your data. Check your connection.",
+            "splash_bootstrap_error_retry" to "Retry",
 
             // Explore (ExploreScreen.kt)
             "explore_title" to "Explore",

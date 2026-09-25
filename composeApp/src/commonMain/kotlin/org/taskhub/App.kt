@@ -6,17 +6,26 @@
 package org.taskhub
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.FadeTransition
@@ -31,6 +40,7 @@ import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.components.AppSettingsState
 import org.taskhub.ui.components.LocalAppSettings
 import org.taskhub.ui.components.shouldReduceMotion
+import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.GoogleAuthManager
 import org.taskhub.ui.models.GoogleAuthState
 import org.taskhub.ui.screens.AuthGateScreen
@@ -41,6 +51,9 @@ import org.taskhub.ui.screens.TaskDetailScreen
 import org.taskhub.ui.theme.TaskHubTheme
 import org.taskhub.ui.theme.TaskHubThemeType
 import org.taskhub.ui.theme.Teal600
+
+/** Límite del bootstrap post-login (espacio Personal + miembro "Yo" + restaurar hogares) — ver LaunchedEffect en [App]. */
+private const val BOOTSTRAP_TIMEOUT_MS = 20_000L
 
 /**
  * Composable raíz de la app.
@@ -165,6 +178,18 @@ fun App(
                 // pantalla duplicada en la pila (panel de notificaciones
                 // 2026-09-05, UX, doble salto visual Home→destino).
                 var initialDeepLinkConsumedKey by remember { mutableStateOf<Pair<String?, String?>?>(null) }
+                // true si el bootstrap de abajo excedió BOOTSTRAP_TIMEOUT_MS
+                // sin terminar — el resto de pasos ya son best-effort/
+                // offline-first (nunca lanzan), así que la única forma
+                // realista de quedarse colgado es una llamada de red sin
+                // resolver nunca. Splash/D6: antes no había ningún límite ni
+                // pantalla de error, solo el spinner de "Still loading" de
+                // más abajo indefinidamente.
+                var bootstrapFailed by remember { mutableStateOf(false) }
+                // Cambiarlo relanza el LaunchedEffect (ver su `key`) para que
+                // el botón "Reintentar" de la pantalla de error repita el
+                // bootstrap sin tener que cerrar/abrir sesión.
+                var bootstrapRetryKey by remember { mutableStateOf(0) }
 
                 // Task Hub es Google-only (ver docs/google-only-auth-2026-09-12.md):
                 // sin sesión de Google, [AuthGateScreen] bloquea el resto de la app
@@ -173,9 +198,10 @@ fun App(
                 // SignedIn. Si el usuario cierra sesión (o se elimina la cuenta)
                 // mientras ya estaba dentro, `initialScreens` se resetea a null
                 // para reconstruir el Navigator desde cero en el próximo login.
-                LaunchedEffect(authState) {
+                LaunchedEffect(authState, bootstrapRetryKey) {
                     if (authState !is GoogleAuthState.SignedIn) {
                         initialScreens = null
+                        bootstrapFailed = false
                         return@LaunchedEffect
                     }
                     // ── Subir el token FCM del dispositivo (si hay uno persistido) ──
@@ -205,49 +231,63 @@ fun App(
                             // Offline/transitorio: se reintenta en el próximo arranque.
                         }
                     }
-                    // ── Resolver/crear el espacio Personal (interdispositivo) ──
-                    // El ID es determinista (personal_{uid}), de modo que con la
-                    // misma cuenta de Google todos los dispositivos apuntan al
-                    // MISMO hogar.
-                    var personalId: String? = null
-                    try {
-                        val personal = repo.getOrCreatePersonalHousehold()
-                        householdStore.replacePersonalHousehold(personal.id)
-                        personalId = personal.id
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        // Sin conexión: recurrir al guardado local o a un placeholder.
-                        personalId = householdStore.getPersonalHouseholdId()
-                            ?: householdStore.getSavedHouseholds()
-                                .firstOrNull { it.isPersonal }?.id
-                            ?: "personal-offline".also {
-                                householdStore.savePersonalHousehold(it)
-                                householdStore.saveHousehold(
-                                    householdId = it,
-                                    householdName = "Personal",
-                                    inviteCode = "",
-                                    isPersonal = true
-                                )
-                            }
-                    }
-
-                    // ── Asegurar que el espacio Personal tenga un miembro "Yo" ──
-                    // Para que completar tareas sepa quién las hace (cubre migración).
-                    if (!personalId.isNullOrBlank() && personalId != "personal-offline") {
+                    // Los tres pasos de abajo (resolver espacio Personal, asegurar
+                    // el miembro "Yo", restaurar hogares compartidos) son todos
+                    // best-effort/offline-first (nunca lanzan por sí mismos) —
+                    // la única forma realista de quedarse colgado aquí es una
+                    // llamada de red que nunca resuelve. Este timeout es la red
+                    // de seguridad: si se excede, se corta y se muestra la
+                    // pantalla de error con "Reintentar" en vez de dejar el
+                    // spinner de "Still loading" girando para siempre (D6).
+                    val bootstrapCompleted = withTimeoutOrNull(BOOTSTRAP_TIMEOUT_MS) {
+                        // ── Resolver/crear el espacio Personal (interdispositivo) ──
+                        // El ID es determinista (personal_{uid}), de modo que con la
+                        // misma cuenta de Google todos los dispositivos apuntan al
+                        // MISMO hogar.
+                        var personalId: String? = null
                         try {
-                            repo.ensurePersonalMember(personalId)
+                            val personal = repo.getOrCreatePersonalHousehold()
+                            householdStore.replacePersonalHousehold(personal.id)
+                            personalId = personal.id
                         } catch (e: CancellationException) {
                             throw e
                         } catch (_: Exception) {
-                            // No crítico: si falla (offline), se reintenta al reabrir
+                            // Sin conexión: recurrir al guardado local o a un placeholder.
+                            personalId = householdStore.getPersonalHouseholdId()
+                                ?: householdStore.getSavedHouseholds()
+                                    .firstOrNull { it.isPersonal }?.id
+                                ?: "personal-offline".also {
+                                    householdStore.savePersonalHousehold(it)
+                                    householdStore.saveHousehold(
+                                        householdId = it,
+                                        householdName = "Personal",
+                                        inviteCode = "",
+                                        isPersonal = true
+                                    )
+                                }
                         }
-                    }
 
-                    // ── Restaurar hogares compartidos desde la nube ──
-                    // Cubre hogares creados/unidos en OTRO dispositivo con la
-                    // misma cuenta de Google (antes solo se restauraban al re-loguearse).
-                    authManager.restoreFromCloudOnStartup()
+                        // ── Asegurar que el espacio Personal tenga un miembro "Yo" ──
+                        // Para que completar tareas sepa quién las hace (cubre migración).
+                        if (!personalId.isNullOrBlank() && personalId != "personal-offline") {
+                            try {
+                                repo.ensurePersonalMember(personalId)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                // No crítico: si falla (offline), se reintenta al reabrir
+                            }
+                        }
+
+                        // ── Restaurar hogares compartidos desde la nube ──
+                        // Cubre hogares creados/unidos en OTRO dispositivo con la
+                        // misma cuenta de Google (antes solo se restauraban al re-loguearse).
+                        authManager.restoreFromCloudOnStartup()
+                    }
+                    if (bootstrapCompleted == null) {
+                        bootstrapFailed = true
+                        return@LaunchedEffect
+                    }
 
                     // ── Ir siempre a HomeScreen, con el destino del deep link
                     // (si lo hay) ya incluido en la pila inicial ───────────
@@ -304,12 +344,37 @@ fun App(
                     ) {
                         when (val screens = initialScreens) {
                             null -> {
-                                // Still loading
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(color = Teal600)
+                                if (bootstrapFailed) {
+                                    // El bootstrap excedió BOOTSTRAP_TIMEOUT_MS —
+                                    // ver LaunchedEffect de arriba (D6).
+                                    Box(
+                                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = AppStrings.get("splash_bootstrap_error_title", appSettings.currentLanguage),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                textAlign = TextAlign.Center,
+                                                color = MaterialTheme.colorScheme.onBackground
+                                            )
+                                            Spacer(Modifier.height(16.dp))
+                                            Button(onClick = {
+                                                bootstrapFailed = false
+                                                bootstrapRetryKey++
+                                            }) {
+                                                Text(AppStrings.get("splash_bootstrap_error_retry", appSettings.currentLanguage))
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // Still loading
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(color = Teal600)
+                                    }
                                 }
                             }
                             else -> {
