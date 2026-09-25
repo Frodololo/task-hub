@@ -61,6 +61,12 @@ export interface MemberDoc {
   leftAt: number;
 }
 
+/** Subconjunto de `households/{hid}/rewards/{id}`. */
+export interface RewardDoc {
+  title: string;
+  cost: number;
+}
+
 /** Subconjunto de `households/{hid}`. */
 export interface HouseholdDoc {
   ownerId: string;

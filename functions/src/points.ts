@@ -14,3 +14,13 @@ export const MAX_TOTAL_POINTS = 100000;
 export function clampTotalPoints(current: number, delta: number): number {
   return Math.min(Math.max(current + delta, 0), MAX_TOTAL_POINTS);
 }
+
+/**
+ * Tope de una única transferencia "donar entre iguales" cuando quien llama
+ * NO es `isTrusted` (owner/admin) — MISMO valor que `PointsRules.kt`
+ * (`MAX_PEER_TRANSFER_AMOUNT`) y `firestore.rules` (`isPeerPointsTransfer`,
+ * literal `1000`). Un owner/admin donando en nombre de otro miembro (p.ej.
+ * un perfil infantil sin cuenta propia) no está sujeto a este tope, igual
+ * que hoy `isTrusted(hid)` en las reglas.
+ */
+export const MAX_PEER_TRANSFER_AMOUNT = 1000;

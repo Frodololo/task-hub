@@ -59,13 +59,24 @@ export async function loadHouseholdTimezone(tx: Transaction, householdId: string
   }
 }
 
-/** `isOwner(hid) || isAdminMember(hid)` — ver `firestore.rules`. */
-export async function requireTrusted(tx: Transaction, householdId: string, uid: string): Promise<void> {
+/**
+ * `isOwner(hid) || isAdminMember(hid)` — ver `firestore.rules`. No lanza:
+ * usada por `donatePoints` para decidir el tope de transferencia entre
+ * iguales (`MAX_PEER_TRANSFER_AMOUNT`) en vez de bloquear la operación.
+ */
+export async function isTrustedMember(tx: Transaction, householdId: string, uid: string): Promise<boolean> {
   const householdSnap = await tx.get(db.doc(`households/${householdId}`));
   if (!householdSnap.exists) throw new HttpsError("not-found", "household-not-found");
   const ownerId = householdSnap.data()?.ownerId as string | undefined;
-  if (ownerId === uid) return;
-  const member = await loadActiveMember(tx, householdId, uid);
-  if (member.role === "admin") return;
+  if (ownerId === uid) return true;
+  const memberSnap = await tx.get(db.doc(`households/${householdId}/members/${uid}`));
+  if (!memberSnap.exists) return false;
+  const data = memberSnap.data() as MemberDoc;
+  return (data.leftAt ?? 0) === 0 && data.role === "admin";
+}
+
+/** `isOwner(hid) || isAdminMember(hid)` — ver `firestore.rules`. */
+export async function requireTrusted(tx: Transaction, householdId: string, uid: string): Promise<void> {
+  if (await isTrustedMember(tx, householdId, uid)) return;
   throw new HttpsError("permission-denied", "not-trusted");
 }
