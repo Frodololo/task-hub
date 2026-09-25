@@ -274,11 +274,30 @@ private fun RankingRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = if (member.role == "admin") s("ranking_role_admin") else s("member_role_child_full"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (member.role == "admin") s("ranking_role_admin") else s("member_role_child_full"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = secondaryTextColor
+                    )
+                    // Mismo indicador que HouseholdMemberList.kt para perfiles
+                    // "hijo/a" sin cuenta de Google vinculada (member.userId ==
+                    // null): antes solo se veía en la lista de miembros, no aquí.
+                    if (member.userId == null) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = MaterialTheme.shapes.extraSmall,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = s("member_no_account_badge"),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             // Points

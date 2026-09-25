@@ -880,6 +880,23 @@ data class CreateTaskScreen(
                                                     text = "${s(if (member.role == "admin") "member_role_admin_short" else "member_role_child_short")} ${member.displayName}",
                                                     style = MaterialTheme.typography.bodyLarge
                                                 )
+                                                // Mismo indicador que HouseholdMemberList.kt
+                                                // para perfiles "hijo/a" sin cuenta de Google
+                                                // vinculada (member.userId == null).
+                                                if (member.userId == null) {
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Surface(
+                                                        shape = MaterialTheme.shapes.extraSmall,
+                                                        color = MaterialTheme.colorScheme.surfaceVariant
+                                                    ) {
+                                                        Text(
+                                                            text = s("member_no_account_badge"),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        )
+                                                    }
+                                                }
                                                 Spacer(Modifier.weight(1f))
                                                 Text(
                                                     text = "⭐ ${member.totalPoints}",
@@ -1111,7 +1128,22 @@ data class CreateTaskScreen(
                                                                     onClick = {
                                                                         rotationSlots = rotationSlots.toMutableMap().apply { put(day, member.id) }
                                                                         expanded = false
-                                                                    }
+                                                                    },
+                                                                    trailingIcon = if (member.userId == null) {
+                                                                        {
+                                                                            Surface(
+                                                                                shape = MaterialTheme.shapes.extraSmall,
+                                                                                color = MaterialTheme.colorScheme.surfaceVariant
+                                                                            ) {
+                                                                                Text(
+                                                                                    text = s("member_no_account_badge"),
+                                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                                )
+                                                                            }
+                                                                        }
+                                                                    } else null
                                                                 )
                                                             }
                                                         }
