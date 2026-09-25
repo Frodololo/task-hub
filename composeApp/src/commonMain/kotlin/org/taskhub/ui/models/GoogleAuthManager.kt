@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,7 @@ import org.taskhub.platform.launchGoogleSignIn
 import org.taskhub.platform.revokeGoogleCalendarAccess
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SettingsStore
+import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.i18n.toUserMessage
 
 /**
@@ -65,7 +67,34 @@ class GoogleAuthManager(
     private val settingsStore: SettingsStore,
     private val householdStore: HouseholdStore
 ) {
+    private companion object {
+        /**
+         * Sentinel contra bucle de reintento: tras este número de fallos
+         * consecutivos de [signIn] (sin ningún éxito entre medias), se deja de
+         * relanzar el flujo nativo y se muestra un error fijo hasta el próximo
+         * inicio de sesión correcto — sin esto, un fallo persistente del
+         * proveedor Google (p.ej. backend caído) dejaría al usuario reintentando
+         * el mismo flujo sin límite.
+         */
+        const val MAX_CONSECUTIVE_SIGN_IN_FAILURES = 3
+
+        /**
+         * Si el flujo nativo de Google Sign-In no resuelve (ni éxito ni
+         * cancelación) en este plazo, se da por fallido — sin esto, un flujo
+         * colgado (p.ej. el selector de cuenta nunca se cierra) dejaría
+         * [GoogleAuthState.SigningIn] para siempre, con el botón de login
+         * deshabilitado sin salida.
+         */
+        const val SIGN_IN_TIMEOUT_MS = 60_000L
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    /** Fallos consecutivos de [signIn] sin éxito entre medias — ver [MAX_CONSECUTIVE_SIGN_IN_FAILURES]. */
+    private var consecutiveSignInFailures = 0
+
+    /** Vigila que el flujo lanzado por [signIn] resuelva antes de [SIGN_IN_TIMEOUT_MS]; se cancela al llegar cualquier resultado. */
+    private var signInTimeoutJob: Job? = null
 
     private val _state = MutableStateFlow<GoogleAuthState>(
         if (settingsStore.isGoogleLoggedIn()) {
@@ -86,10 +115,12 @@ class GoogleAuthManager(
                     // "" = cancelado / sin token → volver a SignedOut para no
                     // quedarse colgado en "Conectando con Google...".
                     token.isEmpty() -> {
+                        signInTimeoutJob?.cancel()
                         GoogleSignInResultHolder.reset()
                         _state.value = GoogleAuthState.SignedOut
                     }
                     else -> {
+                        signInTimeoutJob?.cancel()
                         handleGoogleToken(token)
                         GoogleSignInResultHolder.reset()
                     }
@@ -108,12 +139,33 @@ class GoogleAuthManager(
      * dejaría el resultado del primer flujo (que puede llegar después del
      * reset) sin nadie que lo recoja, colgando ese `state.first { ... }` en
      * [linkCalendar] para siempre.
+     *
+     * Sentinel contra bucle de reintento: si ya hubo
+     * [MAX_CONSECUTIVE_SIGN_IN_FAILURES] fallos consecutivos sin un login
+     * correcto entre medias, no relanza el flujo nativo — deja un error fijo
+     * hasta que [consecutiveSignInFailures] se resetee (login correcto). Y si
+     * el flujo lanzado no resuelve en [SIGN_IN_TIMEOUT_MS], lo da por fallido.
      */
     fun signIn() {
         if (_state.value is GoogleAuthState.SigningIn) return
+        if (consecutiveSignInFailures >= MAX_CONSECUTIVE_SIGN_IN_FAILURES) {
+            _state.value = GoogleAuthState.Error(
+                AppStrings.get("google_auth_error_locked_out", settingsStore.getLanguage())
+            )
+            return
+        }
         _state.value = GoogleAuthState.SigningIn
         GoogleSignInResultHolder.reset()
         launchGoogleSignIn()
+        signInTimeoutJob?.cancel()
+        signInTimeoutJob = scope.launch {
+            delay(SIGN_IN_TIMEOUT_MS)
+            GoogleSignInResultHolder.reset()
+            consecutiveSignInFailures++
+            _state.value = GoogleAuthState.Error(
+                AppStrings.get("google_auth_error_timeout", settingsStore.getLanguage())
+            )
+        }
     }
 
     /**
@@ -345,10 +397,13 @@ class GoogleAuthManager(
             repointPersonalHousehold()
             syncHouseholdsToCloud()
             syncGoogleAvatar(result)
+            // Login correcto: resetea el sentinel de reintentos (ver [signIn]).
+            consecutiveSignInFailures = 0
             _state.value = GoogleAuthState.SignedIn(result.email)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            consecutiveSignInFailures++
             // Nunca `e.message` crudo (panel de expertos v10, UX):
             // `repo.signInWithGoogle` puede lanzar un `FirestoreException` con
             // el `error.message` crudo de Identity Toolkit (p.ej.
