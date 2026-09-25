@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -180,6 +181,18 @@ fun AuthGateScreen(
                         text = s("settings_account_sign_in_google"),
                         style = MaterialTheme.typography.titleMedium
                     )
+                }
+            }
+
+            // Botón "Cancelar" visible SOLO durante la espera: antes, con el
+            // timeout genérico alineado al peor caso real (5 min, ver KDoc de
+            // GoogleAuthManager.SIGN_IN_TIMEOUT_MS), un usuario que cambiaba
+            // de idea o cuyo selector de cuenta se colgaba no tenía ninguna
+            // salida hasta que expirara ese plazo.
+            if (authState is GoogleAuthState.SigningIn) {
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { authManager.cancelSignIn() }) {
+                    Text(s("common_cancel"))
                 }
             }
         }

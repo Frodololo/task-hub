@@ -14,9 +14,13 @@ import org.taskhub.GoogleSignInHelper
 import org.taskhub.GoogleCalendarAuthHelper
 import java.security.SecureRandom
 
-/** Comparte [text] con el chooser nativo de Android (`Intent.ACTION_SEND`). */
-actual fun shareText(text: String, title: String) {
-    val context = AndroidContextHolder.context ?: return
+/**
+ * Comparte [text] con el chooser nativo de Android (`Intent.ACTION_SEND`).
+ * Devuelve `false`: el propio chooser ya es la confirmación visual, no hace
+ * falta una adicional — ver KDoc del `expect`.
+ */
+actual fun shareText(text: String, title: String): Boolean {
+    val context = AndroidContextHolder.context ?: return false
     val sendIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
@@ -29,6 +33,7 @@ actual fun shareText(text: String, title: String) {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     context.startActivity(chooser)
+    return false
 }
 
 actual val hasHomeScreenWidget: Boolean = true
@@ -71,6 +76,16 @@ actual fun launchGoogleSignIn() {
 
 /** Android no distingue motivos de fallo — ver KDoc de [consumeLastSignInFailureReason] en Platform.kt. */
 actual fun consumeLastSignInFailureReason(): String? = null
+
+/**
+ * No-op: el selector de cuenta nativo de Android es una Activity del sistema
+ * sin ninguna API para cerrarla mediante `GoogleSignInHelper` desde aquí, y
+ * resuelve casi al instante por su cuenta (éxito o cancelación) — ver KDoc
+ * del `expect` en Platform.kt.
+ */
+actual fun cancelGoogleSignIn() {
+    // Android: sin forma programática de cerrar el selector nativo — no-op.
+}
 
 /** Delega en [GoogleCalendarAuthHelper] para obtener/refrescar el access token de Calendar. */
 actual suspend fun getGoogleCalendarAccessToken(): String? {

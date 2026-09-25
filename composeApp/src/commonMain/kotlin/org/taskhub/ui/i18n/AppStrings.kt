@@ -196,6 +196,7 @@ object AppStrings {
             "tasks_new" to "+ Nueva",
             "tasks_export_csv" to "📊 Exportar CSV",
             "tasks_export_csv_title" to "Tareas Task Hub",
+            "tasks_export_csv_copied" to "CSV copiado al portapapeles",
             "tasks_completed_today" to "✅ Completadas hoy",
             // Grupo para tareas completadas en días ANTERIORES a hoy (bug 2026-09-12:
             // antes desaparecían de toda la pantalla, incluido el filtro "Completadas",
@@ -910,6 +911,7 @@ object AppStrings {
             "tasks_new" to "+ New",
             "tasks_export_csv" to "📊 Export CSV",
             "tasks_export_csv_title" to "Task Hub Tasks",
+            "tasks_export_csv_copied" to "CSV copied to clipboard",
             "tasks_completed_today" to "✅ Completed today",
             "tasks_completed_other" to "✅ Completed",
             "tasks_due_today" to "Today",

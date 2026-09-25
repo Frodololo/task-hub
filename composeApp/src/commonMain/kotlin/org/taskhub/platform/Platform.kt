@@ -7,8 +7,17 @@ package org.taskhub.platform
 
 import kotlin.concurrent.Volatile
 
-/** Comparte texto mediante la hoja de compartir nativa de cada plataforma. */
-expect fun shareText(text: String, title: String)
+/**
+ * Comparte texto mediante la hoja de compartir nativa de cada plataforma.
+ * Devuelve `true` si la plataforma no tiene una hoja de compartir nativa y en
+ * su lugar copió [text] al portapapeles en silencio (hoy solo JVM/desktop) —
+ * en ese caso el llamante debe mostrar su propia confirmación (p.ej. un
+ * snackbar), porque copiar al portapapeles no da ninguna pista visual de que
+ * ha ocurrido algo (a diferencia de abrir un chooser/share sheet, donde la UI
+ * nativa ya es la confirmación). `false` en el resto de casos (Android/iOS: se
+ * abrió la hoja nativa; web: no-op sin implementar todavía).
+ */
+expect fun shareText(text: String, title: String): Boolean
 
 /** Guarda la preferencia de tema del widget en la caché específica de la plataforma. */
 expect fun saveWidgetThemeToCache(theme: String)
@@ -49,6 +58,27 @@ expect val hasNotificationSupport: Boolean
 
 /** Lanza el flujo de Google Sign-In para vincular una cuenta de Google (integración con Calendar). */
 expect fun launchGoogleSignIn()
+
+/**
+ * Aborta, si es posible, el flujo nativo de [launchGoogleSignIn] en curso —
+ * usado por el botón "Cancelar" de `AuthGateScreen` durante
+ * [org.taskhub.ui.models.GoogleAuthState.SigningIn], para no dejar al usuario
+ * sin salida hasta que expire el timeout de
+ * [org.taskhub.ui.models.GoogleAuthManager] (antes 60s, ahora alineado con el
+ * peor caso real de 5 min del flujo OAuth de escritorio — ver
+ * `GoogleDesktopSignInHelper.CALLBACK_TIMEOUT_MILLIS`).
+ *
+ * Solo JVM/wasmJs tienen un flujo de fondo de larga duración que cancelar de
+ * verdad (navegador+socket loopback / sondeo de GIS): ahí, cancelar detiene
+ * ese trabajo para que no publique un resultado tardío en
+ * [GoogleSignInResultHolder] después de que el usuario ya haya vuelto a
+ * [org.taskhub.ui.models.GoogleAuthState.SignedOut]. En Android/iOS, cuyo
+ * flujo nativo (selector de cuenta) resuelve casi al instante por su cuenta,
+ * es un no-op: no existe una forma programática de cerrar esa UI del sistema
+ * desde aquí, y la ventana de una respuesta tardía tras cancelar es
+ * insignificante en la práctica.
+ */
+expect fun cancelGoogleSignIn()
 
 /**
  * Motivo específico (si se conoce) del último fallo/cancelación de

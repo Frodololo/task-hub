@@ -16,10 +16,11 @@ import platform.UIKit.UIViewController
  *
  * `title` no tiene un equivalente directo en `UIActivityViewController`
  * (no acepta asunto/título como tal, a diferencia del Intent de Android) —
- * se ignora, igual que en wasmJs.
+ * se ignora, igual que en wasmJs. Devuelve `false`: la propia hoja nativa ya
+ * es la confirmación visual — ver KDoc del `expect`.
  */
-actual fun shareText(text: String, title: String) {
-    val rootViewController = topMostViewController() ?: return
+actual fun shareText(text: String, title: String): Boolean {
+    val rootViewController = topMostViewController() ?: return false
     // Cast documentado de Kotlin/Native: kotlin.String es toll-free-bridged a
     // NSString en interop con Objective-C, por lo que `as NSString` es válido
     // y necesario aquí porque `activityItems` espera un `List<Any>` de tipos
@@ -36,6 +37,7 @@ actual fun shareText(text: String, title: String) {
         popover.sourceRect = rootViewController.view.bounds
     }
     rootViewController.presentViewController(activityViewController, animated = true, completion = null)
+    return false
 }
 
 /** Recorre `presentedViewController` desde la key window hasta el controlador visible más arriba. */
@@ -113,6 +115,14 @@ actual fun launchGoogleSignIn() {
 
 /** iOS no distingue motivos de fallo — ver KDoc de [consumeLastSignInFailureReason] en Platform.kt. */
 actual fun consumeLastSignInFailureReason(): String? = null
+
+/**
+ * No-op: el flujo abre Safari (`openURL`) y no hay forma de cerrarlo desde
+ * aquí — ver KDoc del `expect` en Platform.kt.
+ */
+actual fun cancelGoogleSignIn() {
+    // iOS: sin forma programática de cerrar Safari — no-op.
+}
 
 /**
  * Implementación iOS del `expect` [getGoogleCalendarAccessToken] (`platform/Platform.kt`).

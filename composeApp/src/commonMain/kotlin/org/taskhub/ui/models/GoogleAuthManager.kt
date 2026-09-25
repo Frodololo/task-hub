@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.platform.GoogleSignInResultHolder
+import org.taskhub.platform.cancelGoogleSignIn
 import org.taskhub.platform.consumeLastSignInFailureReason
 import org.taskhub.platform.getGoogleCalendarAccessToken
 import org.taskhub.platform.launchGoogleSignIn
@@ -85,8 +86,23 @@ class GoogleAuthManager(
          * colgado (p.ej. el selector de cuenta nunca se cierra) dejaría
          * [GoogleAuthState.SigningIn] para siempre, con el botón de login
          * deshabilitado sin salida.
+         *
+         * Antes 60s: ese valor era MENOR que el propio timeout interno de los
+         * flujos largos (`GoogleDesktopSignInHelper.CALLBACK_TIMEOUT_MILLIS` =
+         * 5 min en JVM, `GIS_TIMEOUT_MS` = 2 min en wasmJs), así que este
+         * timeout genérico disparaba SIEMPRE primero: un login legítimo pero
+         * lento (2FA, escribir la contraseña, elegir cuenta en el navegador
+         * de escritorio) mostraba "tiempo de espera agotado" mientras el
+         * flujo nativo seguía en curso de fondo — y si el usuario terminaba
+         * de loguearse justo después, la pantalla pasaba de golpe de "Error"
+         * a "Conectado" sin que el usuario entendiera por qué (justo la
+         * confusión fallo-de-red-vs-cancelación de la tarjeta del kanban).
+         * Ahora se alinea con el peor caso real (el flujo de escritorio) para
+         * que nunca dispare antes de que el propio flujo nativo tenga ocasión
+         * de resolver por sí mismo. El botón "Cancelar" de `AuthGateScreen`
+         * (ver [cancelSignIn]) es la salida temprana que antes faltaba.
          */
-        const val SIGN_IN_TIMEOUT_MS = 60_000L
+        const val SIGN_IN_TIMEOUT_MS = 5 * 60_000L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -184,6 +200,28 @@ class GoogleAuthManager(
                 AppStrings.get("google_auth_error_timeout", settingsStore.getLanguage())
             )
         }
+    }
+
+    /**
+     * Aborta un [signIn] en curso — botón "Cancelar" de `AuthGateScreen`
+     * durante [GoogleAuthState.SigningIn]. Antes de esto, la única salida de
+     * esa pantalla era esperar a [SIGN_IN_TIMEOUT_MS] (ver su KDoc, ahora 5
+     * min): sin botón, un usuario que cambia de idea o cuyo navegador/
+     * selector de cuenta se queda colgado no tenía forma de volver atrás.
+     *
+     * Además de volver a [GoogleAuthState.SignedOut], llama a
+     * [cancelGoogleSignIn] (no-op en Android/iOS, cancela el trabajo de fondo
+     * en JVM/wasmJs) para que un resultado tardío del intento cancelado no
+     * reabra sesión (o muestre un error) más tarde en una pantalla en la que
+     * el usuario ya había vuelto a "sin sesión" a propósito. No-op si no hay
+     * ningún sign-in en curso.
+     */
+    fun cancelSignIn() {
+        if (_state.value !is GoogleAuthState.SigningIn) return
+        signInTimeoutJob?.cancel()
+        cancelGoogleSignIn()
+        GoogleSignInResultHolder.reset()
+        _state.value = GoogleAuthState.SignedOut
     }
 
     /**

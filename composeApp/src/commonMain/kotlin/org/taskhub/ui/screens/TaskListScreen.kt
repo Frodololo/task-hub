@@ -46,6 +46,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import org.taskhub.network.RecurrenceRules
 import org.taskhub.network.models.TaskResponse
@@ -179,12 +180,23 @@ data class TaskListScreen(
         // Settings dialog state
         var showSettings by remember { mutableStateOf(false) }
 
+        val exportCsvScope = rememberCoroutineScope()
+
         // Pre-compute CSV export callback — needs access to list state
         val exportCsv: () -> Unit = {
             val state = listState
             if (state is TaskListUiState.Success) {
                 val csv = model.generateCsv(state.tasks)
-                shareText(csv, s("tasks_export_csv_title"))
+                // shareText devuelve true solo si copió en silencio al
+                // portapapeles (desktop, sin hoja nativa) — ahí, sin este
+                // snackbar, el usuario no tenía ninguna señal de que la
+                // exportación funcionó (a diferencia de Android/iOS, donde el
+                // chooser/share sheet nativo ya es la confirmación visual).
+                if (shareText(csv, s("tasks_export_csv_title"))) {
+                    exportCsvScope.launch {
+                        snackbarHostState.showSnackbar(s("tasks_export_csv_copied"))
+                    }
+                }
             }
         }
 

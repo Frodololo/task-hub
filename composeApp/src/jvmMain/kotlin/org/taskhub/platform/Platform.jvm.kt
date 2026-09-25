@@ -21,10 +21,12 @@ import kotlinx.coroutines.launch
 /**
  * Sin hoja de compartir nativa en desktop: copia [text] al portapapeles del
  * sistema (java.awt) como fallback razonable. [title] no se usa (no hay
- * chooser al que ponerle asunto).
+ * chooser al que ponerle asunto). Devuelve `true` (copiado en silencio) para
+ * que el llamante muestre su propia confirmación — ver KDoc del `expect`.
  */
-actual fun shareText(text: String, title: String) {
+actual fun shareText(text: String, title: String): Boolean {
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+    return true
 }
 
 /** JVM: no hay widget de escritorio. */
@@ -80,6 +82,21 @@ actual fun launchGoogleSignIn() {
 
 /** Desktop no distingue motivos de fallo — ver KDoc de [consumeLastSignInFailureReason] en Platform.kt. */
 actual fun consumeLastSignInFailureReason(): String? = null
+
+/**
+ * Cancela [signInJob]: como [GoogleDesktopSignInHelper.awaitCallback] bloquea
+ * en una llamada de socket no interrumpible cooperativamente, esto no cierra
+ * el navegador ni el socket al instante, pero garantiza que, en cuanto esa
+ * llamada bloqueante retorne (éxito, error o su propio timeout de 5 min), la
+ * corrutina cancelada nunca llegue a la línea final
+ * `GoogleSignInResultHolder.setResult(...)` — sin esto, un resultado tardío
+ * de un intento ya cancelado por el usuario podría reabrir sesión (o mostrar
+ * un error) en una pantalla en la que el usuario ya había vuelto a
+ * "sin sesión" a propósito.
+ */
+actual fun cancelGoogleSignIn() {
+    signInJob?.cancel()
+}
 
 /** JVM: Google Sign-In no soportado — siempre devuelve null (sin token). */
 actual suspend fun getGoogleCalendarAccessToken(): String? {

@@ -19,10 +19,12 @@ import kotlinx.coroutines.launch
 
 /**
  * Web: no hay Web Share API cableada todavía (queda como no-op con log a
- * consola). [title] no se usa.
+ * consola). [title] no se usa. Devuelve `false` (no se copió nada) — mostrar
+ * una confirmación de "copiado" aquí sería mentir, ver KDoc del `expect`.
  */
-actual fun shareText(text: String, title: String) {
+actual fun shareText(text: String, title: String): Boolean {
     AppLog.d("ShareText", "shareText not implemented on web: $title")
+    return false
 }
 
 /** Web: no hay widget de home screen. */
@@ -124,6 +126,17 @@ actual fun consumeLastSignInFailureReason(): String? {
     val reason = jsGoogleSignInReason()
     jsClearGoogleSignInReason()
     return reason.ifEmpty { null }
+}
+
+/**
+ * Cancela [gisPollJob]: `delay()` sí es cooperativamente cancelable (a
+ * diferencia del socket bloqueante de JVM), así que esto detiene el sondeo
+ * casi al instante — el prompt de GIS puede seguir visible en el navegador,
+ * pero como ya no se sondea, aunque el usuario lo complete después no se
+ * publicará ningún resultado tardío en [GoogleSignInResultHolder].
+ */
+actual fun cancelGoogleSignIn() {
+    gisPollJob?.cancel()
 }
 
 /** Web: Google Sign-In no soportado todavía — siempre devuelve null (sin token). */
