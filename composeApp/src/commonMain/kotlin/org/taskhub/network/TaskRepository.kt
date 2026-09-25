@@ -25,6 +25,18 @@ import org.taskhub.storage.TaskCache
 import org.taskhub.ui.i18n.AppStrings
 
 /**
+ * Lanzada por [TaskRepository.updateTask] cuando se agotan los reintentos de
+ * concurrencia optimista (ver su KDoc): otro miembro modificó la misma tarea
+ * entre la lectura y la escritura, repetidamente, en las
+ * [FirestoreClient.OPTIMISTIC_WRITE_MAX_RETRIES] ventanas de oportunidad
+ * disponibles. Vive a nivel de paquete (no anidada) para que los `ScreenModel`
+ * puedan capturarla POR TIPO, igual que [InsufficientBalanceException] en
+ * [MemberRepository] — el mensaje real, traducido, se resuelve en la capa de
+ * UI (`task_error_conflict`), no aquí.
+ */
+class TaskConflictException(taskId: String) : Exception("La tarea $taskId fue modificada por otro miembro")
+
+/**
  * Tareas de un hogar (subcolecciones `households/{id}/tasks`, `taskHistory`,
  * `tasks/{taskId}/assignments` y `tasks/{taskId}/comments`). Extraído de
  * [FirestoreRepository] (ver docs/refactor-arquitectura-2026-08-31.md, punto
@@ -662,6 +674,27 @@ class TaskRepository(
      * usa el caller — ver [org.taskhub.ui.models.TaskScreenModel.updateTask] —
      * como `dueDate` de las asignaciones de una tarea recurrente sin fecha
      * límite manual).
+     *
+     * Concurrencia optimista (`currentDocument.updateTime` + reintento, mismo
+     * patrón que [updateSubtasks]/[MemberRepository.addMemberPoints] — ver
+     * `docs/atomicidad-commit-pendiente.md` para por qué NO se usa el
+     * endpoint transaccional `:commit`): al reescribir el documento entero,
+     * dos miembros editando la MISMA tarea casi a la vez (p.ej. uno cambia el
+     * título mientras otro cambia los puntos) sufrían last-writer-wins puro —
+     * el segundo PATCH en llegar pisaba el documento completo con su propia
+     * foto, silenciosamente revirtiendo el cambio del primero. Ahora cada
+     * intento relee el documento para obtener su `updateTime` y lo manda como
+     * precondición; si otro escritor ganó la carrera entretanto, Firestore
+     * rechaza el PATCH (`FAILED_PRECONDITION`/`ABORTED`) y se reintenta hasta
+     * [FirestoreClient.OPTIMISTIC_WRITE_MAX_RETRIES] veces. A diferencia de
+     * [updateSubtasks] (que recalcula su array sobre el documento fresco en
+     * cada intento), aquí los campos a escribir ya son el estado final
+     * decidido por quien edita (los parámetros de esta función) — no dependen
+     * del documento leído, así que el reintento solo repite el mismo PATCH
+     * con una precondición fresca. Si se agotan los reintentos, lanza
+     * [TaskConflictException] en vez de la [FirestoreException] cruda, para
+     * que la UI pueda mostrar un mensaje específico ("la tarea fue modificada
+     * por otro miembro") en vez del genérico de fallo de red.
      */
     suspend fun updateTask(
         householdId: String,
@@ -729,24 +762,51 @@ class TaskRepository(
         val nextDueAt = computeNextDueAt(frequency, recurrenceDay, recurrenceDays, lastCompletedDate ?: now)
         fields["nextDueAt"] = nextDueAtField(nextDueAt)
 
-        // Panel v17 (hallazgo CRÍTICO de red/offline): ver comentario en
-        // [updateAssignmentRotation].
-        try {
-            client.patch("$baseUrl/households/$householdId/tasks/$taskId") {
-                withAuth()
-                updateMaskFieldPaths(fields.keys)
-                contentType(ContentType.Application.Json)
-                setBody(FirestoreDocument(fields))
+        // Concurrencia optimista — ver KDoc de la función. Cada intento relee
+        // el documento (para su `updateTime` fresco) y repite el mismo PATCH;
+        // el valor devuelto (`nextDueAt`, ver comentario más abajo) no cambia
+        // entre intentos porque no depende del documento leído.
+        val docUrl = "$baseUrl/households/$householdId/tasks/$taskId"
+        repeat(FirestoreClient.OPTIMISTIC_WRITE_MAX_RETRIES) { attempt ->
+            val current: FirestoreDocumentResponse = client.getWithRetry(docUrl) { withAuth() }.body()
+            try {
+                client.patch(docUrl) {
+                    withAuth()
+                    updateMaskFieldPaths(fields.keys)
+                    current.updateTime?.let { parameter("currentDocument.updateTime", it) }
+                    contentType(ContentType.Application.Json)
+                    setBody(FirestoreDocument(fields))
+                }
+                taskCache.clearTasks(householdId)
+                // Se devuelve para que el caller (FirestoreRepository.updateTask
+                // → TaskScreenModel.updateTask) pueda usarlo como dueDate de las
+                // asignaciones al editar una tarea recurrente sin fecha límite
+                // manual — ver [assignmentRotationField]/KDoc de
+                // TaskScreenModel.updateTask (panel v4, Experto 8 hallazgo #4
+                // MEDIO).
+                return nextDueAt
+            } catch (e: FirestoreException) {
+                val isConflict = e.code == "FAILED_PRECONDITION" || e.code == "ABORTED"
+                if (!isConflict) throw e
+                if (attempt == FirestoreClient.OPTIMISTIC_WRITE_MAX_RETRIES - 1) {
+                    // Se agotaron los reintentos: la caché se invalida igual
+                    // (nuestra foto local ya no es de fiar) y se lanza la
+                    // excepción tipada — ver KDoc de la función.
+                    taskCache.clearTasks(householdId)
+                    throw TaskConflictException(taskId)
+                }
+                // Otro escritor ganó la carrera: reintentar con el updateTime fresco.
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Timeout/IOException (AMBIGUOUS): ver KDoc de [MemberRepository.addMemberPoints].
+                if (e.errorCategory() == ErrorCategory.AMBIGUOUS) {
+                    taskCache.clearTasks(householdId)
+                }
+                throw e
             }
-        } finally {
-            taskCache.clearTasks(householdId)
         }
-        // Se devuelve para que el caller (FirestoreRepository.updateTask →
-        // TaskScreenModel.updateTask) pueda usarlo como dueDate de las
-        // asignaciones al editar una tarea recurrente sin fecha límite manual
-        // — ver [assignmentRotationField]/KDoc de TaskScreenModel.updateTask
-        // (panel v4, Experto 8 hallazgo #4 MEDIO).
-        return nextDueAt
+        error("updateTask: se agotó el bucle de reintentos sin devolver ni lanzar (inalcanzable)")
     }
 
     /**
