@@ -48,6 +48,8 @@ import org.taskhub.network.models.ReassignTaskCompletionResult
 import org.taskhub.network.models.UndoTaskCompletionRequest
 import org.taskhub.network.models.UndoTaskCompletionResult
 import org.taskhub.network.models.TaskCompletionFunctionResult
+import org.taskhub.network.models.RedeemRewardRequest
+import org.taskhub.network.models.RedeemRewardResponse
 import org.taskhub.network.models.NotificationResponse
 import org.taskhub.network.models.RewardResponse
 import org.taskhub.network.models.RewardRedemption
@@ -1535,9 +1537,9 @@ open class FirestoreRepository(
 
     // ────────────────────────────────────────────────────────
     //  Rewards — delegado en RewardsRepository (fase 2.2 del refactor), salvo
-    //  redeemReward: orquesta Reward+Member (descuenta puntos vía
-    //  MemberRepository.addMemberPoints a la vez que registra el canje), así
-    //  que se queda en la fachada — mismo motivo que completeTask.
+    //  redeemReward: delega en la Cloud Function transaccional `redeemReward`
+    //  (kanban "CF redeemReward"), así que se queda en la fachada — mismo
+    //  motivo/patrón que completeTask.
     // ────────────────────────────────────────────────────────
 
     suspend fun getRewards(householdId: String): List<RewardResponse> = rewardsRepository.getRewards(householdId)
@@ -1554,73 +1556,57 @@ open class FirestoreRepository(
     suspend fun deleteReward(householdId: String, rewardId: String) =
         rewardsRepository.deleteReward(householdId, rewardId)
 
-    /** Redeem a reward: subtract points from member, record redemption. Requires auth (write). */
+    /**
+     * Canjea una recompensa delegando en la Cloud Function transaccional
+     * `redeemReward` (kanban "CF redeemReward",
+     * `functions/src/redeemReward.ts`): UNA sola llamada de red, resuelta en
+     * una `runTransaction` del Admin SDK en vez de las dos escrituras REST
+     * secuenciales de antes (crear `rewardRedemptions` + descontar
+     * `totalPoints`), que dejaban un canje "a medias" si la segunda fallaba a
+     * mitad de camino (ver `docs/atomicidad-commit-pendiente.md`). El coste
+     * real se lee de `rewards/{rewardId}` DENTRO de la transacción —
+     * [pointsSpent] no se envía al servidor, se mantiene en la firma solo por
+     * compatibilidad con [org.taskhub.ui.models.MemberScreenModel.redeemReward]
+     * (mismo motivo que `taskPoints` en [reassignTaskCompletion]).
+     *
+     * Requires auth (write).
+     */
     suspend fun redeemReward(
         householdId: String,
         rewardId: String,
         memberId: String,
         pointsSpent: Int
     ): RewardRedemption {
-        val now = Clock.System.now().toEpochMilliseconds()
-
-        // Validar saldo contra una lectura fresca del miembro — a diferencia de
-        // donatePoints (que sí valida vía PointsRules), esta función descontaba
-        // puntos sin comprobar el saldo en ningún punto del repositorio,
-        // confiando solo en el `canAfford` (potencialmente obsoleto) de la UI.
-        // No elimina la carrera entre dos canjes concurrentes (ver
-        // docs/atomicidad-commit-pendiente.md), pero evita el caso más común:
-        // un único canje con saldo insuficiente por datos ya desincronizados.
-        val member = getMembers(householdId).find { it.id == memberId }
-            ?: throw IllegalStateException("Miembro no encontrado")
-        if (member.totalPoints < pointsSpent) {
-            throw InsufficientBalanceException("Saldo insuficiente para canjear esta recompensa")
-        }
-
-        // 1. Guardar primero el registro de canje: si el paso 2 (descontar
-        //    puntos) falla a mitad de camino, queda un registro auditable en
-        //    vez de puntos perdidos sin ningún rastro de en qué se gastaron.
-        val redemption = rewardsRepository.createRedemption(householdId, rewardId, memberId, pointsSpent, now)
-
-        // 2. Descontar los puntos del miembro. Si esto falla, el registro de
-        //    canje del paso 1 queda huérfano (recompensa "canjeada" sin
-        //    descuento real) y un reintento del usuario duplicaría el
-        //    registro con un solo descuento — se compensa borrándolo aquí
-        //    antes de relanzar, en vez de dejarlo para un segundo intento
-        //    (garantía que cambia: ya no queda rastro auditable de un intento
-        //    fallido, pero tampoco puede haber doble registro con un único
-        //    descuento).
         try {
-            // floor = 0: revalida el saldo contra el valor fresco en cada
-            // reintento de addMemberPoints, no solo contra la lectura de
-            // arriba (que puede estar obsoleta si otro dispositivo canjeó/
-            // donó entre medias) — cierra la carrera de dos canjes
-            // concurrentes que podía dejar totalPoints negativo (panel v12,
-            // Red/offline). Al lanzar InsufficientBalanceException, este
-            // mismo catch borra el redemption huérfano y la relanza tal cual,
-            // igual que cualquier otro fallo de esta escritura.
-            addMemberPoints(householdId, memberId, -pointsSpent, floor = 0)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Si el error es ambiguo (timeout/IoException): el servidor pudo
-            // haber completado el descuento de puntos antes del timeout — no
-            // borrar el registro de canje, o al reintentar se crearía un
-            // segundo registro con un solo descuento real (panel v14, hallazgo 2).
-            if (e.errorCategory() == ErrorCategory.AMBIGUOUS) {
-                throw e
+            val result = cloudFunctionsClient.call<RedeemRewardRequest, RedeemRewardResponse>(
+                "redeemReward",
+                RedeemRewardRequest(householdId = householdId, rewardId = rewardId, memberId = memberId)
+            )
+            return RewardRedemption(
+                id = result.redemptionId,
+                rewardId = rewardId,
+                memberId = memberId,
+                redeemedAt = result.redeemedAt,
+                pointsSpent = result.pointsSpent
+            )
+        } catch (e: CloudFunctionException) {
+            // `failed-precondition` = saldo insuficiente (única condición que
+            // lanza ese status en `redeemReward.ts`) — se traduce por TIPO,
+            // no por mensaje, para que MemberScreenModel siga distinguiéndolo
+            // del resto de errores (mismo motivo que el catch de
+            // InsufficientBalanceException ahí, panel 2026-09-10, Experto 2).
+            throw if (e.status == "FAILED_PRECONDITION") {
+                InsufficientBalanceException("Saldo insuficiente para canjear esta recompensa")
+            } else {
+                e
             }
-            try {
-                rewardsRepository.deleteRedemption(householdId, redemption.id)
-            } catch (cleanupError: CancellationException) {
-                throw cleanupError
-            } catch (_: Exception) {
-                // Best-effort: si el borrado también falla, se prioriza relanzar
-                // el error original en vez de ocultarlo tras un fallo de limpieza.
-            }
-            throw e
+        } finally {
+            // Invalidación en `finally`: mismo motivo que [completeTask] — un
+            // timeout no distingue "nunca llegó" de "se aplicó pero se perdió
+            // la respuesta".
+            taskCache.clearRewardRedemptions(householdId)
+            taskCache.clearMembers(householdId)
         }
-
-        return redemption
     }
 
     /** Get all reward redemptions for a household. */

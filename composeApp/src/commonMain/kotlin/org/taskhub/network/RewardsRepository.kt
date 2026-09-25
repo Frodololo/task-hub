@@ -1,8 +1,7 @@
 /**
- * Capa REST de Firestore para recompensas y sus canjes. Consumida por
- * `ScreenModel`s de la UI de recompensas y orquestada desde
- * [FirestoreRepository.redeemReward] para las operaciones que también tocan
- * puntos de miembro.
+ * Capa REST de Firestore para recompensas y sus canjes (alta/baja de
+ * recompensas, lectura de canjes). Consumida por `ScreenModel`s de la UI de
+ * recompensas.
  */
 package org.taskhub.network
 
@@ -21,16 +20,14 @@ import org.taskhub.storage.TaskCache
  * docs/refactor-arquitectura-2026-08-31.md, punto 6, fase 2.2). Lógica movida
  * tal cual, sin cambios de comportamiento.
  *
- * `redeemReward` NO se movió aquí a propósito: descuenta puntos del miembro
- * (`addMemberPoints`) y lee `getMembers`, ambas operaciones de la capa de
- * puntos que hoy vive en [FirestoreRepository] (moverá a `MemberRepository`
- * en la fase 2.5). Moverla ahora obligaría a un ciclo `RewardsRepository` ↔
- * `MemberRepository` (este último aún no existe). Se mantiene en
- * `FirestoreRepository` hasta esa fase — ver el resumen del encargo.
+ * `redeemReward` NO vive aquí: delega en la Cloud Function transaccional
+ * `redeemReward` (kanban "CF redeemReward") — ver
+ * [FirestoreRepository.redeemReward]. Este repo ya no escribe
+ * `rewardRedemptions`, solo lo lee (para historial/anonimización).
  */
 /**
  * Repositorio REST de recompensas de un hogar: alta/baja de recompensas y
- * registro de canjes. Delega auth y manejo de errores en [FirestoreClient].
+ * lectura de canjes. Delega auth y manejo de errores en [FirestoreClient].
  */
 class RewardsRepository(
     private val baseUrl: String,
@@ -129,57 +126,6 @@ class RewardsRepository(
         } catch (_: Exception) {
             taskCache.getCachedRewardRedemptions(householdId) ?: emptyList()
         }
-    }
-
-    /**
-     * Escribe el registro de canje (sin tocar puntos del miembro) — usado por
-     * [FirestoreRepository.redeemReward], que orquesta este escritura junto
-     * con `MemberRepository.addMemberPoints` (Reward+Member, se queda en la
-     * fachada por ese motivo, igual que `deleteHousehold`/`leaveHousehold` en
-     * [HouseholdRepository]). Requires auth (write).
-     */
-    suspend fun createRedemption(
-        householdId: String,
-        rewardId: String,
-        memberId: String,
-        pointsSpent: Int,
-        redeemedAt: Long
-    ): RewardRedemption {
-        val fields = mapOf(
-            "rewardId" to FirestoreValue(stringValue = rewardId),
-            "memberId" to FirestoreValue(stringValue = memberId),
-            "redeemedAt" to FirestoreValue(integerValue = redeemedAt.toString()),
-            "pointsSpent" to FirestoreValue(integerValue = pointsSpent.toString())
-        )
-
-        val response: FirestoreDocumentResponse = client.post(
-            "$baseUrl/households/$householdId/rewardRedemptions"
-        ) {
-            withAuth()
-            contentType(ContentType.Application.Json)
-            setBody(FirestoreDocument(fields))
-        }.body()
-
-        val id = extractDocId(response.name, "redeemReward")
-        taskCache.clearRewardRedemptions(householdId)
-        return RewardRedemption(id, rewardId, memberId, redeemedAt, pointsSpent)
-    }
-
-    /**
-     * Borra un registro de canje huérfano — usado por
-     * [FirestoreRepository.redeemReward] para compensar cuando
-     * [createRedemption] tuvo éxito pero el descuento de puntos posterior
-     * falló (ver su KDoc): sin esto, un reintento del usuario creaba un
-     * SEGUNDO registro de canje con un solo descuento real. Best-effort: si
-     * el borrado también falla, el caller relanza igualmente la excepción
-     * original (el registro huérfano queda para limpieza manual, pero el
-     * usuario no pierde puntos).
-     */
-    suspend fun deleteRedemption(householdId: String, redemptionId: String) {
-        client.delete("$baseUrl/households/$householdId/rewardRedemptions/$redemptionId") {
-            withAuth()
-        }
-        taskCache.clearRewardRedemptions(householdId)
     }
 
     /**

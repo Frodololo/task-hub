@@ -63,6 +63,22 @@ data class UndoTaskCompletionRequest(
 @Serializable
 data class UndoTaskCompletionResult(val reverted: Boolean)
 
+@Serializable
+data class RedeemRewardRequest(
+    val householdId: String,
+    val rewardId: String,
+    val memberId: String
+)
+
+/** El coste real (`pointsSpent`) lo decide SIEMPRE el servidor leyendo `rewards/{rewardId}` — ver `functions/src/redeemReward.ts`. */
+@Serializable
+data class RedeemRewardResponse(
+    val redemptionId: String,
+    val pointsSpent: Int,
+    val redeemedAt: Long,
+    val memberNewTotal: Int
+)
+
 /** Envoltorio genérico del protocolo callable: `{ "data": T } → { "result": R }`. */
 @Serializable
 data class CallableRequest<T>(val data: T)
