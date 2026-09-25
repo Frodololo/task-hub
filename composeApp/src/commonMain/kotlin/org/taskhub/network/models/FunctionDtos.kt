@@ -79,6 +79,20 @@ data class RedeemRewardResponse(
     val memberNewTotal: Int
 )
 
+@Serializable
+data class DonatePointsRequest(
+    val householdId: String,
+    val fromMemberId: String,
+    val toMemberId: String,
+    val amount: Int
+)
+
+@Serializable
+data class DonatePointsResponse(
+    val donorNewTotal: Int,
+    val receptorNewTotal: Int
+)
+
 /** Envoltorio genérico del protocolo callable: `{ "data": T } → { "result": R }`. */
 @Serializable
 data class CallableRequest<T>(val data: T)

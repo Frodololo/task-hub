@@ -39,10 +39,14 @@ class InsufficientBalanceException(message: String) : Exception(message)
  * a mano con lambdas dentro de la fachada (panel v7, #16).
  *
  * NO incluye `completeTask`/`completeAssignment`/`reassignTaskCompletion`/
- * `redeemReward`: son flujos que orquestan Task+Member (o Reward+Member) a la
- * vez, así que se quedan en la fachada — igual que `deleteHousehold`/
- * `leaveHousehold` se quedaron fuera de [HouseholdRepository] por depender de
- * `getMembers`/`currentMemberCache`, que ahora viven aquí.
+ * `redeemReward`/`donatePoints`: son flujos que delegan la transacción
+ * completa en una Cloud Function (o, en el caso de `completeTask`, orquestan
+ * Task+Member) y se quedan en la fachada, que es la capa que conoce
+ * `cloudFunctionsClient` — igual que `deleteHousehold`/`leaveHousehold` se
+ * quedaron fuera de [HouseholdRepository] por depender de
+ * `getMembers`/`currentMemberCache`, que ahora viven aquí. `appreciateMember`
+ * SÍ sigue aquí: no existe todavía una Cloud Function equivalente (kanban
+ * "CF donatePoints/appreciateMember").
  */
 class MemberRepository(
     private val baseUrl: String,
@@ -600,7 +604,14 @@ class MemberRepository(
         PointsRules.AppreciateError.LIMIT_EXCEEDED -> AppreciateErrorReason.LIMIT_EXCEEDED
     }
 
-    /** Resultado de [donatePoints]: éxito (con los nuevos totales de ambos) o error tipado. */
+    /**
+     * Resultado de `FirestoreRepository.donatePoints` (éxito, con los nuevos
+     * totales de ambos, o error tipado). La implementación vive en
+     * `FirestoreRepository` (delega en la Cloud Function transaccional
+     * `donatePoints`, kanban "CF donatePoints/appreciateMember") — este tipo
+     * se queda aquí, junto a [AppreciateResult], porque es el contrato
+     * público que ya consume [org.taskhub.ui.models.MemberScreenModel].
+     */
     sealed class DonateResult {
         data class Ok(val donorNewTotal: Int, val receptorNewTotal: Int) : DonateResult()
         data class Error(val reason: DonateErrorReason) : DonateResult()
@@ -630,13 +641,6 @@ class MemberRepository(
      * donante para evitar duplicar puntos (panel v14, hallazgo 2).
      */
     enum class DonateErrorReason { SELF, INVALID_AMOUNT, INSUFFICIENT_BALANCE, MEMBER_NOT_FOUND, TRANSFER_FAILED, ROLLBACK_FAILED, AMOUNT_EXCEEDS_LIMIT, UNCERTAIN }
-
-    /** Traduce el error de dominio (sin dependencias de red) de [PointsRules] al tipo público de este repo. */
-    private fun PointsRules.DonateError.toRepoReason(): DonateErrorReason = when (this) {
-        PointsRules.DonateError.SELF -> DonateErrorReason.SELF
-        PointsRules.DonateError.INVALID_AMOUNT -> DonateErrorReason.INVALID_AMOUNT
-        PointsRules.DonateError.INSUFFICIENT_BALANCE -> DonateErrorReason.INSUFFICIENT_BALANCE
-    }
 
     /** Presupuesto de "agradecer" vigente de [member] en el instante [now] — ver [PointsRules.currentAppreciationBudget]. */
     private fun currentAppreciationBudget(member: MemberResponse, now: Long): PointsRules.AppreciationBudget =
@@ -739,93 +743,6 @@ class MemberRepository(
             }
         }
         throw IllegalStateException("appreciateMember: reintentos de concurrencia agotados")
-    }
-
-    /**
-     * "Donar": transfiere [amount] puntos reales del saldo de [fromMemberId] a [toMemberId].
-     * Sin tope semanal (no es acuñación), pero no permite donarse a sí mismo ni donar más
-     * del saldo actual del donante.
-     */
-    suspend fun donatePoints(
-        householdId: String,
-        fromMemberId: String,
-        toMemberId: String,
-        amount: Int
-    ): DonateResult {
-        PointsRules.validateDonateBasic(fromMemberId, toMemberId, amount)?.let {
-            return DonateResult.Error(it.toRepoReason())
-        }
-
-        val members = getMembers(householdId)
-        val fromMember = members.find { it.id == fromMemberId }
-            ?: return DonateResult.Error(DonateErrorReason.MEMBER_NOT_FOUND)
-        val toMember = members.find { it.id == toMemberId }
-            ?: return DonateResult.Error(DonateErrorReason.MEMBER_NOT_FOUND)
-
-        PointsRules.validateDonateBalance(amount, fromMember.totalPoints)?.let {
-            return DonateResult.Error(it.toRepoReason())
-        }
-
-        // Restar primero al donante: si la segunda escritura falla a mitad de
-        // camino, el peor caso es que los puntos "desaparezcan" (recuperable
-        // reintentando la donación), nunca que se dupliquen de la nada.
-        // floor = 0: revalida el saldo contra el valor fresco en cada intento
-        // (no solo el `fromMember.totalPoints` ya comprobado arriba, que puede
-        // estar obsoleto si otro dispositivo donó/canjeó entre medias) — sin
-        // esto, dos donaciones concurrentes del mismo donante podían dejarlo
-        // en negativo (panel v12, Red/offline, mismo bug que se cerró en
-        // redeemReward).
-        try {
-            addMemberPoints(householdId, fromMemberId, -amount, floor = 0)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: InsufficientBalanceException) {
-            return DonateResult.Error(DonateErrorReason.INSUFFICIENT_BALANCE)
-        }
-        try {
-            addMemberPoints(householdId, toMemberId, amount)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Si error ambiguo (timeout/IoException): el servidor pudo haber
-            // completado la escritura al receptor antes de que el cliente
-            // detectara el fallo — NO revertir el débito al donante, o ambas
-            // partes ganarían puntos (panel v14, hallazgo 2).
-            if (e.errorCategory() == ErrorCategory.AMBIGUOUS) {
-                return DonateResult.Error(DonateErrorReason.UNCERTAIN)
-            }
-            // Si `toMemberId` no es el propio donante y este no es
-            // isTrusted(hid), firestore.rules rechaza el PATCH al documento
-            // ajeno (403) — sin este catch, la excepción se propagaba sin
-            // control y los puntos ya restados al donante desaparecían sin
-            // acreditarse a nadie (panel de revisión 2026-09-10, Experto 9,
-            // CRÍTICO). Revertimos el débito para dejar la operación sin
-            // efecto en vez de perder puntos.
-            // Ver KDoc de [DonateErrorReason.AMOUNT_EXCEEDS_LIMIT]: distingue el
-            // 403 esperado por superar el tope de la regla de un fallo de
-            // transferencia genérico, ANTES de intentar la reversión (el tipo
-            // de fallo no cambia qué reversión intentar, solo el mensaje final).
-            val exceedsPeerLimit = PointsRules.exceedsPeerTransferLimit(amount)
-            try {
-                addMemberPoints(householdId, fromMemberId, amount)
-            } catch (e2: CancellationException) {
-                throw e2
-            } catch (_: Exception) {
-                // La reversión también falló: a diferencia del caso normal,
-                // aquí SÍ es posible que el donante se haya quedado con menos
-                // puntos sin que nadie los reciba — distinguido de
-                // TRANSFER_FAILED para no afirmarle lo contrario en la UI.
-                return DonateResult.Error(DonateErrorReason.ROLLBACK_FAILED)
-            }
-            return DonateResult.Error(
-                if (exceedsPeerLimit) DonateErrorReason.AMOUNT_EXCEEDS_LIMIT else DonateErrorReason.TRANSFER_FAILED
-            )
-        }
-
-        return DonateResult.Ok(
-            donorNewTotal = fromMember.totalPoints - amount,
-            receptorNewTotal = toMember.totalPoints + amount
-        )
     }
 
     /**

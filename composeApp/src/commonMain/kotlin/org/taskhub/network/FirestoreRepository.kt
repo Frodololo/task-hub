@@ -50,6 +50,8 @@ import org.taskhub.network.models.UndoTaskCompletionResult
 import org.taskhub.network.models.TaskCompletionFunctionResult
 import org.taskhub.network.models.RedeemRewardRequest
 import org.taskhub.network.models.RedeemRewardResponse
+import org.taskhub.network.models.DonatePointsRequest
+import org.taskhub.network.models.DonatePointsResponse
 import org.taskhub.network.models.NotificationResponse
 import org.taskhub.network.models.RewardResponse
 import org.taskhub.network.models.RewardRedemption
@@ -1065,12 +1067,92 @@ open class FirestoreRepository(
         amount: Int
     ): MemberRepository.AppreciateResult = memberRepository.appreciateMember(householdId, fromMemberId, toMemberId, amount)
 
+    /**
+     * "Donar": delega en la Cloud Function transaccional `donatePoints`
+     * (kanban "CF donatePoints/appreciateMember",
+     * `functions/src/donatePoints.ts`), que ya existía implementada y
+     * desplegada (exportada en `functions/src/index.ts`) sin ningún caller
+     * — este era exactamente el mismo caso que `redeemReward` (ver su KDoc):
+     * el cliente seguía haciendo dos PATCH REST secuenciales (restar al
+     * donante, luego sumar al receptor) no atómicos, con reversión
+     * best-effort si el segundo fallaba a mitad de camino (ver el catálogo
+     * de fallos parciales que dejaba, `TRANSFER_FAILED`/`ROLLBACK_FAILED`/
+     * `UNCERTAIN` más abajo), mientras el servidor ya resolvía ambos lados
+     * en una única `runTransaction` del Admin SDK.
+     *
+     * `appreciateMember` NO se migra en este cambio: a diferencia de
+     * `donatePoints`, no existe ninguna Cloud Function equivalente todavía
+     * — escribirla es infraestructura nueva que requiere despliegue externo,
+     * fuera del alcance de "conectar una función ya existente".
+     *
+     * Self/importe se siguen validando en el cliente ([PointsRules.validateDonateBasic])
+     * antes de tocar red — la función también los valida (`invalid-argument`),
+     * pero hacerlo aquí evita una llamada de red para el caso más común
+     * (importe inválido en el diálogo) y preserva los motivos tipados exactos
+     * (`SELF`/`INVALID_AMOUNT`) sin depender de parsear el `message` de la
+     * Cloud Function.
+     */
     suspend fun donatePoints(
         householdId: String,
         fromMemberId: String,
         toMemberId: String,
         amount: Int
-    ): MemberRepository.DonateResult = memberRepository.donatePoints(householdId, fromMemberId, toMemberId, amount)
+    ): MemberRepository.DonateResult {
+        PointsRules.validateDonateBasic(fromMemberId, toMemberId, amount)?.let {
+            val reason = when (it) {
+                PointsRules.DonateError.SELF -> MemberRepository.DonateErrorReason.SELF
+                PointsRules.DonateError.INVALID_AMOUNT -> MemberRepository.DonateErrorReason.INVALID_AMOUNT
+                PointsRules.DonateError.INSUFFICIENT_BALANCE -> MemberRepository.DonateErrorReason.INSUFFICIENT_BALANCE
+            }
+            return MemberRepository.DonateResult.Error(reason)
+        }
+
+        return try {
+            val result = cloudFunctionsClient.call<DonatePointsRequest, DonatePointsResponse>(
+                "donatePoints",
+                DonatePointsRequest(
+                    householdId = householdId,
+                    fromMemberId = fromMemberId,
+                    toMemberId = toMemberId,
+                    amount = amount
+                )
+            )
+            MemberRepository.DonateResult.Ok(
+                donorNewTotal = result.donorNewTotal,
+                receptorNewTotal = result.receptorNewTotal
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Mismo criterio de clasificación que antes (ver KDoc de
+            // [MemberRepository.DonateErrorReason]): un fallo AMBIGUO (timeout,
+            // IOException) no distingue si el servidor completó la transacción,
+            // así que se marca UNCERTAIN en vez de un fallo genérico — pero ya
+            // NO puede dejar el donante debitado sin acreditar al receptor
+            // (la escritura es todo-o-nada en el servidor), así que
+            // ROLLBACK_FAILED ya no es alcanzable desde aquí.
+            val reason = when {
+                e is CloudFunctionException && e.status == "FAILED_PRECONDITION" ->
+                    MemberRepository.DonateErrorReason.INSUFFICIENT_BALANCE
+                e is CloudFunctionException && e.status == "NOT_FOUND" ->
+                    MemberRepository.DonateErrorReason.MEMBER_NOT_FOUND
+                e is CloudFunctionException && e.status == "PERMISSION_DENIED" ->
+                    if (PointsRules.exceedsPeerTransferLimit(amount)) {
+                        MemberRepository.DonateErrorReason.AMOUNT_EXCEEDS_LIMIT
+                    } else {
+                        MemberRepository.DonateErrorReason.TRANSFER_FAILED
+                    }
+                e.errorCategory() == ErrorCategory.AMBIGUOUS -> MemberRepository.DonateErrorReason.UNCERTAIN
+                else -> MemberRepository.DonateErrorReason.TRANSFER_FAILED
+            }
+            MemberRepository.DonateResult.Error(reason)
+        } finally {
+            // Invalidación en `finally`: mismo motivo que [redeemReward] — un
+            // timeout no distingue "nunca llegó" de "se aplicó pero se perdió
+            // la respuesta".
+            taskCache.clearMembers(householdId)
+        }
+    }
 
     open suspend fun getMemberAchievements(householdId: String, memberId: String): Set<String> =
         memberRepository.getMemberAchievements(householdId, memberId)
