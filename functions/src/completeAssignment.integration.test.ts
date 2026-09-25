@@ -97,7 +97,8 @@ describe("completeAssignment — condiciones de error", () => {
   });
 
   test("assignment.taskId no coincide con taskId -> invalid-argument", async () => {
-    await db.doc(`households/${HID}/tasks/otra-tarea`).set({
+    const otherTaskId = "otra-tarea";
+    await db.doc(`households/${HID}/tasks/${otherTaskId}`).set({
       points: 5,
       frequency: "once",
       recurrenceDays: [],
@@ -113,9 +114,23 @@ describe("completeAssignment — condiciones de error", () => {
       nextDueAt: null,
       createdAt: Date.now()
     } satisfies TaskDoc);
+    // Doc en la ruta anidada de `otherTaskId`, pero con el campo interno
+    // `taskId` apuntando a TID (datos corruptos/legacy) — así se ejercita el
+    // guard `assignment.taskId !== taskId` en vez del `not-found` por ruta.
+    await db.doc(`households/${HID}/tasks/${otherTaskId}/assignments/${AID}`).set({
+      taskId: TID,
+      memberId: UID,
+      mandatory: false,
+      dueDate: Date.now(),
+      status: "assigned",
+      completedAt: null,
+      pointsAwarded: null,
+      onTime: null,
+      assignedAt: Date.now()
+    } satisfies TaskAssignmentDoc);
 
     await expect(
-      completeAssignment.run(callAs(UID, { householdId: HID, taskId: "otra-tarea", assignmentId: AID }))
+      completeAssignment.run(callAs(UID, { householdId: HID, taskId: otherTaskId, assignmentId: AID }))
     ).rejects.toMatchObject({ code: "invalid-argument" });
   });
 });

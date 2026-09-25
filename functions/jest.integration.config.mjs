@@ -9,6 +9,11 @@ export default {
   testEnvironment: "node",
   extensionsToTreatAsEsm: [".ts"],
   moduleNameMapper: {
+    // `firebase-admin/auth`/`firebase-admin/app-check` -> stubs: ver KDoc de
+    // `testUtils/firebaseAdminAuthStub.cjs` (jwks-rsa -> jose@6 es ESM puro,
+    // Jest no puede `require()`lo síncronamente).
+    "^firebase-admin/auth$": "<rootDir>/src/testUtils/firebaseAdminAuthStub.cjs",
+    "^firebase-admin/app-check$": "<rootDir>/src/testUtils/firebaseAdminAppCheckStub.cjs",
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
   transform: {

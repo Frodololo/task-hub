@@ -47,3 +47,47 @@ jobs:
       - name: Lint — detekt
         run: ./gradlew :composeApp:detekt
         continue-on-error: true
+
+  functions-tests:
+    name: Cloud Functions — Build & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+
+      # El emulador de Firestore (`npm run test:integration`) es un jar de
+      # Java — los runners ubuntu-latest ya traen JDK, pero se fija una
+      # versión explícita para no depender de lo que venga preinstalado.
+      - name: Setup JDK 21 (emulador Firestore)
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Install dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Type-check
+        working-directory: functions
+        run: npx tsc --noEmit
+
+      # Tests puros (penalty.ts, rules.ts) — sin emulador, rápidos.
+      - name: Run unit tests
+        working-directory: functions
+        run: npm test
+
+      # Tests de integración contra el emulador de Firestore (completar/
+      # deshacer/reasignar tarea, purga TTL) — ver `docs/` de infraestructura
+      # de Cloud Functions.
+      - name: Run integration tests (Firestore emulator)
+        working-directory: functions
+        run: npm run test:integration

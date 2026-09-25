@@ -37,3 +37,8 @@ keystore.properties
 
 # Worktrees temporales de agentes (Claude Code)
 .claude/worktrees/
+
+# Logs del emulador de Firebase (firebase emulators:exec/:start)
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
