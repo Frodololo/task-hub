@@ -14,7 +14,7 @@
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, REGION } from "./admin.js";
-import { requireAuth, loadActiveMember, loadHouseholdTimezone } from "./auth.js";
+import { requireAuth, loadActiveMember, loadHouseholdTimezone, isTrustedMember } from "./auth.js";
 import { resolveCompletionOutcome } from "./penalty.js";
 import { resolveNextAssignmentDecision } from "./rules.js";
 import { clampTotalPoints } from "./points.js";
@@ -75,6 +75,13 @@ export const completeRecurringTask = onCall<CompleteRecurringTaskRequest, Promis
         // memberId (quien recibe los puntos) también miembro activo del mismo hogar.
         await loadActiveMember(tx, householdId, uid);
         const targetMember = await loadActiveMember(tx, householdId, memberId);
+        // Solo el propio miembro (documento keyed por su UID) o un admin/owner
+        // del hogar pueden completar la tarea en nombre de `memberId` — sin
+        // esto, cualquier miembro activo podía otorgar puntos a OTRO miembro
+        // por una tarea que no completó, sin autorización.
+        if (uid !== memberId && !(await isTrustedMember(tx, householdId, uid))) {
+          throw new HttpsError("permission-denied", "not-self-or-trusted");
+        }
         const memberRef = db.doc(`households/${householdId}/members/${memberId}`);
         const tz = await loadHouseholdTimezone(tx, householdId);
 

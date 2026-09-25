@@ -6,7 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
+import org.taskhub.platform.AppLog
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -40,10 +40,10 @@ class TaskHubFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         // No se loguea el token en sí: es una credencial de targeting de push
-        // (permite enviar notificaciones a este dispositivo concreto) y el
-        // proyecto no tiene ninguna regla R8 que elimine android.util.Log en
-        // release, así que quedaría en Logcat también en builds de producción.
-        Log.d(TAG, "New FCM token received (length=${token.length})")
+        // (permite enviar notificaciones a este dispositivo concreto).
+        // AppLog.d ya no emite en release (ver DebugFlags.isEnabled), pero se
+        // mantiene solo el largo por si acaso, no el valor.
+        AppLog.d(TAG, "New FCM token received (length=${token.length})")
         // Antes solo se logueaba: el comentario decía "lo guarda la lógica
         // principal de la app", pero esa lógica no existía en ningún sitio
         // (verificado por grep) — ningún token llegaba nunca a persistirse,
@@ -61,7 +61,7 @@ class TaskHubFirebaseMessagingService : FirebaseMessagingService() {
      */
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        Log.d(TAG, "FCM message from ${message.from}")
+        AppLog.d(TAG, "FCM message from ${message.from}")
 
         message.notification?.let { notification ->
             showNotification(
@@ -76,7 +76,7 @@ class TaskHubFirebaseMessagingService : FirebaseMessagingService() {
             // aquí householdId/taskId/nombres — mismo criterio que ya se
             // aplica al token (arriba, se trunca a su longitud) pero que no
             // se había extendido a este payload (panel 2026-09-11, MENOR).
-            Log.d(TAG, "Message data keys: ${message.data.keys}")
+            AppLog.d(TAG, "Message data keys: ${message.data.keys}")
             // Handle data payload for custom actions
         }
     }
@@ -113,7 +113,7 @@ class TaskHubFirebaseMessagingService : FirebaseMessagingService() {
         try {
             NotificationManagerCompat.from(this).notify(1001, notification)
         } catch (_: SecurityException) {
-            Log.w(TAG, "Notification permission not granted")
+            AppLog.w(TAG, "Notification permission not granted")
         }
     }
 

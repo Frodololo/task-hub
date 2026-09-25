@@ -7,7 +7,7 @@
 package org.taskhub
 
 import android.content.Context
-import android.util.Log
+import org.taskhub.platform.AppLog
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.russhwolf.settings.Settings
@@ -104,7 +104,7 @@ class NotificationPollWorker(
                     } catch (e: Exception) {
                         // Best-effort: un hogar sin red/permiso (p.ej. lo acaban de
                         // expulsar) no debe impedir sondear el resto.
-                        Log.w(TAG, "Fallo sondeando hogar ${household.id}: ${e.message}")
+                        AppLog.w(TAG, "Fallo sondeando hogar ${household.id}: ${e.message}")
                     }
                 }
             }.awaitAll()

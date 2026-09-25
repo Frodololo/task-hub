@@ -67,10 +67,11 @@ actual fun launchGoogleSignIn() {
             throw e
         } catch (e: Exception) {
             // Config vacía (IllegalStateException) o fallo del flujo — ver KDoc
-            // de GoogleDesktopSignInHelper.signIn. Log claro en stderr: DebugFlags
-            // (Platform.kt) solo se activa desde MainActivity de Android, así que
-            // en desktop siempre está en false y no serviría de canal aquí.
-            System.err.println("Google Sign-In (desktop) falló: ${e.message}")
+            // de GoogleDesktopSignInHelper.signIn. AppLog.e emite siempre
+            // (a diferencia de AppLog.d): DebugFlags (Platform.kt) solo se
+            // activa desde MainActivity de Android, así que en desktop
+            // siempre está en false y AppLog.d no serviría de canal aquí.
+            AppLog.e("GoogleSignIn", "Google Sign-In (desktop) falló", e)
             null
         }
         GoogleSignInResultHolder.setResult(token ?: "")

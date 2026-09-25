@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
  * consola). [title] no se usa.
  */
 actual fun shareText(text: String, title: String) {
-    println("shareText not implemented on web: $title")
+    AppLog.d("ShareText", "shareText not implemented on web: $title")
 }
 
 /** Web: no hay widget de home screen. */

@@ -6,7 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
+import org.taskhub.platform.AppLog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -121,14 +121,14 @@ class MainActivity : ComponentActivity() {
             result.resultCode == Activity.RESULT_CANCELED -> {
                 // El usuario canceló la actualización — forzamos el cierre: no se debe
                 // seguir ejecutando una versión obsoleta.
-                Log.w(TAG, "In-App Update: cancelada por el usuario. Cerrando la app.")
+                AppLog.w(TAG, "In-App Update: cancelada por el usuario. Cerrando la app.")
                 finish()
             }
             else -> {
                 // Fallo de la actualización (p. ej. RESULT_IN_APP_UPDATE_FAILED) o
                 // cualquier otro código: NO forzamos el cierre, para no dejar la app
                 // en un bucle de cierre. Se reintentará en el siguiente arranque.
-                Log.w(TAG, "In-App Update: fallo (resultCode=${result.resultCode}). Continuando.")
+                AppLog.w(TAG, "In-App Update: fallo (resultCode=${result.resultCode}). Continuando.")
             }
         }
     }
@@ -237,14 +237,14 @@ class MainActivity : ComponentActivity() {
                         AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build()
                     )
                     if (!started) {
-                        Log.w(TAG, "In-App Update: no se pudo lanzar el flujo de actualización.")
+                        AppLog.w(TAG, "In-App Update: no se pudo lanzar el flujo de actualización.")
                     }
                 } else {
                     Log.i(TAG, "In-App Update: sin actualización disponible (o no permite IMMEDIATE).")
                 }
             }
             .addOnFailureListener { e ->
-                Log.w(TAG, "In-App Update: error al consultar appUpdateInfo", e)
+                AppLog.w(TAG, "In-App Update: error al consultar appUpdateInfo", e)
             }
     }
 }

@@ -27,7 +27,7 @@ import org.taskhub.network.models.MemberResponse
 import org.taskhub.network.models.AssignmentSlot
 import org.taskhub.network.models.Subtask
 import org.taskhub.platform.NotificationScheduler
-import org.taskhub.platform.DebugFlags
+import org.taskhub.platform.AppLog
 import org.taskhub.platform.AdController
 import org.taskhub.platform.HapticKind
 import org.taskhub.ui.components.hapticsEnabled
@@ -265,11 +265,15 @@ class TaskScreenModel(
                 _isOffline.value = !repo.isOnline()
 
                 // ── DEBUG LOG ──
-                if (DebugFlags.isEnabled) {
-                    println("[TaskScreenModel] loadTasks: ${tasks.size} tasks, ${assignments.size} assignments, ${members.size} members for household=$householdId offline=${_isOffline.value}")
-                    for (t in tasks) {
-                        println("[TaskScreenModel]   task: id=${t.id}, title=${t.title}, freq=${t.frequency}, lastCompleted=${t.lastCompletedDate}, dueDate=${t.dueDate}")
-                    }
+                AppLog.d(
+                    "TaskScreenModel",
+                    "loadTasks: ${tasks.size} tasks, ${assignments.size} assignments, ${members.size} members for household=$householdId offline=${_isOffline.value}"
+                )
+                for (t in tasks) {
+                    AppLog.d(
+                        "TaskScreenModel",
+                        "task: id=${t.id}, title=${t.title}, freq=${t.frequency}, lastCompleted=${t.lastCompletedDate}, dueDate=${t.dueDate}"
+                    )
                 }
 
                 // Collect all unique tags

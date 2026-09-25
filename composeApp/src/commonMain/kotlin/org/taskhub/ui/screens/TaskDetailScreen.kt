@@ -42,6 +42,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.koinInject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.taskhub.network.TaskListRules
 import org.taskhub.network.models.TaskAssignmentResponse
 import org.taskhub.network.models.MemberResponse
 import org.taskhub.ui.models.*
@@ -961,7 +962,17 @@ private fun TaskDetailContent(
                     assignment = assignment,
                     member = member,
                     now = now,
-                    showComplete = true,
+                    // Solo el miembro asignado o un admin/owner pueden
+                    // completarla (ver TaskListRules.canComplete, replica en
+                    // cliente de la autorización server-side de
+                    // `completeAssignment` — panel de reglas de negocio,
+                    // gap: antes se ofrecía "Hecho" para la asignación de
+                    // CUALQUIER miembro).
+                    showComplete = TaskListRules.canComplete(
+                        assignment = assignment,
+                        currentMemberId = currentMemberId,
+                        isAdmin = isAdmin
+                    ),
                     isLoading = actionState is TaskActionState.Loading,
                     isError = actionState is TaskActionState.Error,
                     onComplete = { onComplete(assignment.id, assignment) }

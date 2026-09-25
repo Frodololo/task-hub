@@ -3,7 +3,7 @@
 // cifrado y el fallback si el Keystore del dispositivo no está disponible.
 package org.taskhub.storage
 
-import android.util.Log
+import org.taskhub.platform.AppLog
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.russhwolf.settings.Settings
@@ -47,7 +47,7 @@ actual fun createSecureStore(): SecureStore {
         // Seguridad — hallazgo MEDIO). No se sube a Analytics (podría
         // filtrar detalles del fallo de Keystore de dispositivos concretos);
         // solo logcat, igual que otros catches best-effort del proyecto.
-        Log.w("SecureStore", "Keystore no disponible, usando almacenamiento sin cifrar", e)
+        AppLog.w("SecureStore", "Keystore no disponible, usando almacenamiento sin cifrar", e)
         SettingsSecureStore(Settings())
     }
 }

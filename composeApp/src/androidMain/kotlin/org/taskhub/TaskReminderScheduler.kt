@@ -7,7 +7,7 @@
 package org.taskhub
 
 import android.content.Context
-import android.util.Log
+import org.taskhub.platform.AppLog
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -47,7 +47,7 @@ object TaskReminderScheduler {
         val reminderTime = dueDateEpochMs - (REMINDER_MINUTES_BEFORE * 60 * 1000L)
 
         if (reminderTime <= now) {
-            Log.d("TaskReminderScheduler", "Deadline too soon or past, skipping reminder for $taskId")
+            AppLog.d("TaskReminderScheduler", "Deadline too soon or past, skipping reminder for $taskId")
             return
         }
 
@@ -74,7 +74,7 @@ object TaskReminderScheduler {
         WorkManager.getInstance(context)
             .enqueueUniqueWork(workName, ExistingWorkPolicy.REPLACE, workRequest)
 
-        Log.d("TaskReminderScheduler", "Scheduled reminder for $taskId at $reminderTime (in ${delayMs / 60000} min)")
+        AppLog.d("TaskReminderScheduler", "Scheduled reminder for $taskId at $reminderTime (in ${delayMs / 60000} min)")
     }
 
     /**
@@ -85,7 +85,7 @@ object TaskReminderScheduler {
     fun cancelReminder(context: Context, taskId: String) {
         val workName = "$WORK_NAME_PREFIX$taskId"
         WorkManager.getInstance(context).cancelUniqueWork(workName)
-        Log.d("TaskReminderScheduler", "Cancelled reminder for $taskId")
+        AppLog.d("TaskReminderScheduler", "Cancelled reminder for $taskId")
     }
 }
 
@@ -115,7 +115,7 @@ class ReminderWorker(
             minutesBefore
         )
 
-        Log.d("ReminderWorker", "Fired reminder for $taskId")
+        AppLog.d("ReminderWorker", "Fired reminder for $taskId")
         return Result.success()
     }
 }
