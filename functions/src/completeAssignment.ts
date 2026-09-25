@@ -6,7 +6,7 @@
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, REGION } from "./admin.js";
-import { requireAuth, loadActiveMember, loadHouseholdTimezone } from "./auth.js";
+import { requireAuth, loadActiveMember, loadHouseholdTimezone, isTrustedMember } from "./auth.js";
 import { resolveCompletionOutcome } from "./penalty.js";
 import { resolveNextAssignmentDecision } from "./rules.js";
 import { clampTotalPoints } from "./points.js";
@@ -55,6 +55,15 @@ export const completeAssignment = onCall<CompleteAssignmentRequest, Promise<Comp
         const assignment = assignmentSnap.data() as TaskAssignmentDoc;
         if (assignment.taskId !== taskId) throw new HttpsError("invalid-argument", "assignment-task-mismatch");
         if (assignment.status !== "assigned") throw new HttpsError("aborted", "conflict");
+
+        // Solo el miembro asignado (documento de miembro keyed por su UID,
+        // ver `MemberRepository.createMember`) o un admin/owner del hogar
+        // pueden completar esta asignación — sin esto, cualquier miembro
+        // activo del hogar podía completar la asignación de OTRO miembro y
+        // otorgarle puntos en su nombre sin autorización.
+        if (uid !== assignment.memberId && !(await isTrustedMember(tx, householdId, uid))) {
+          throw new HttpsError("permission-denied", "not-assignee-or-trusted");
+        }
 
         const targetMember = await loadActiveMember(tx, householdId, assignment.memberId);
         const tz = await loadHouseholdTimezone(tx, householdId);
