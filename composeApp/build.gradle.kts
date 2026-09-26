@@ -123,6 +123,12 @@ kotlin {
             // AdMob — anuncios (interstitial + banner preparado)
             implementation("com.google.android.gms:play-services-ads:23.5.0")
 
+            // User Messaging Platform (UMP) — CMP compatible con TCF v2,
+            // obligatorio en EEE/Reino Unido antes de inicializar AdMob (ver
+            // ConsentManager.android.kt). Sin esto, la cuenta de AdMob arriesga
+            // suspensión (aprobado 2026-09-26).
+            implementation("com.google.android.ump:user-messaging-platform:3.1.0")
+
             // In-App Updates — actualización forzada (modo IMMEDIATE)
             implementation("com.google.android.play:app-update:2.1.0")
 

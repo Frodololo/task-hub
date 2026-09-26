@@ -31,8 +31,9 @@ class TaskHubApplication : Application() {
 
     /**
      * Se ejecuta una única vez al crear el proceso, antes de cualquier
-     * Activity. Inicializa Firebase y AdMob (con la configuración de
-     * contenido apto para menores) y deja programado el sondeo periódico de
+     * Activity. Inicializa Firebase, fija la configuración de contenido apto
+     * para menores de AdMob (la inicialización del SDK en sí se difiere a
+     * ConsentManager, ver más abajo) y deja programado el sondeo periódico de
      * notificaciones.
      */
     override fun onCreate() {
@@ -59,16 +60,13 @@ class TaskHubApplication : Application() {
                 .build()
         )
 
-        // Inicializar el SDK de AdMob (Google Mobile Ads). Aquí no se carga
-        // ningún anuncio; solo deja el SDK listo para el interstitial (tras
-        // completar tarea, mucho después del primer frame) y el banner
-        // (preparado, deshabilitado de momento). Panel v16 (2026-09-24,
-        // hallazgo I17): antes se llamaba en el hilo principal dentro de
-        // Application.onCreate(), compitiendo por CPU/IO con la inflación de
-        // la primera Activity y la composición inicial de Compose en CADA
-        // arranque — se difiere a un hilo de fondo, ya que nada necesita el
-        // SDK de AdMob listo antes del primer frame.
-        Thread { MobileAds.initialize(this) }.start()
+        // La inicialización de MobileAds.initialize() se difiere a
+        // ConsentManager (ver ConsentManager.android.kt), que la dispara solo
+        // tras obtener el consentimiento TCF v2 vía UMP — requiere una
+        // Activity y se llama desde MainActivity.onCreate(), no aquí. Esta
+        // configuración (TFCD/rating) es solo metadatos locales, sin llamada
+        // de red, así que puede fijarse antes de esa gate sin riesgo de
+        // cumplimiento.
 
         scheduleNotificationPolling()
     }

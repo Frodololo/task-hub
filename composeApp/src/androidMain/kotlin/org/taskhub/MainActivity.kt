@@ -26,6 +26,7 @@ import com.russhwolf.settings.Settings
 import org.taskhub.platform.AndroidNotificationScheduler
 import org.taskhub.platform.AndroidSchedulerHolder
 import org.taskhub.platform.AndroidContextHolder
+import org.taskhub.platform.ConsentManager
 import org.taskhub.platform.DebugFlags
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.BuildConfig
@@ -137,11 +138,12 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Secuencia de arranque: tema y edge-to-edge, holders de contexto/
-     * Activity, registro de los launchers de Google Sign-In/Calendar, flag de
-     * debug, inicialización del scheduler de notificaciones y su canal,
-     * permiso de notificaciones (Android 13+), comprobación de actualización
-     * in-app, resolución del deep link inicial y, por último, montaje de
-     * [App] con ese deep link como parámetro.
+     * Activity, registro de los launchers de Google Sign-In/Calendar,
+     * consentimiento TCF v2 de AdMob (ver [ConsentManager]), flag de debug,
+     * inicialización del scheduler de notificaciones y su canal, permiso de
+     * notificaciones (Android 13+), comprobación de actualización in-app,
+     * resolución del deep link inicial y, por último, montaje de [App] con
+     * ese deep link como parámetro.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -169,6 +171,11 @@ class MainActivity : ComponentActivity() {
 
         // Registrar el launcher de consentimiento OAuth para el scope de Calendar
         GoogleCalendarAuthHelper.register(this)
+
+        // Consentimiento TCF v2 (UMP) — antes de cualquier inicialización de
+        // AdMob (ver ConsentManager). En EEE/Reino Unido puede mostrar un
+        // formulario; en el resto del mundo resuelve sin UI.
+        ConsentManager.requestConsent(this)
 
         // Set debug mode from BuildConfig (false in release builds)
         DebugFlags.isEnabled = BuildConfig.DEBUG

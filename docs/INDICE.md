@@ -126,6 +126,12 @@ entender *por qué* el código quedó como quedó en ciertos puntos.
   — ronda de correcciones aprobadas y el cierre del flujo de notificaciones
   end-to-end (asignación de tarea / mensaje nuevo → notificación del
   sistema).
+- **[admob-ump-tcf-2026-09-26.md](admob-ump-tcf-2026-09-26.md)** —
+  implementación de un CMP compatible con TCF v2 (Google User Messaging
+  Platform) para evitar el riesgo de suspensión de la cuenta de AdMob en
+  EEE/Reino Unido: `MobileAds.initialize()` se difiere de
+  `TaskHubApplication` a `ConsentManager` (androidMain), que solo lo dispara
+  tras obtener consentimiento vía UMP desde `MainActivity`.
 - **[encargos/](encargos/)** — encargos puntuales más pequeños (mensajería,
   avatares, puntos de agradecer/donar, arreglos de compilación/imports,
   cobertura de tests críticos, propuestas de recurrencia/privacidad/

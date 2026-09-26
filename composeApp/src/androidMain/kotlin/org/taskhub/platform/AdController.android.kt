@@ -36,13 +36,19 @@ object AdControllerImpl : AdController {
     @Volatile
     private var isLoading: Boolean = false
 
-    init {
+    /**
+     * Se llama desde [ConsentManager] en cuanto hay consentimiento (o no hace
+     * falta) para pedir anuncios. Antes de eso no se carga ningún interstitial:
+     * ni AdMob está inicializado ni hay consentimiento TCF v2 (ver
+     * ConsentManager.android.kt).
+     */
+    fun onConsentReady() {
         loadInterstitial()
     }
 
     /** Carga un interstitial nuevo y lo deja listo para mostrar. */
     private fun loadInterstitial() {
-        if (isLoading) return
+        if (isLoading || !ConsentManager.canRequestAds) return
         val context = AndroidContextHolder.context ?: return
         isLoading = true
 
@@ -91,6 +97,7 @@ object AdControllerImpl : AdController {
     }
 
     override fun maybeShowInterstitial() {
+        if (!ConsentManager.canRequestAds) return
         val ad = interstitialAd
         if (ad == null) {
             loadInterstitial()
@@ -109,7 +116,7 @@ object AdControllerImpl : AdController {
         ad.show(activity)
     }
 
-    override fun isBannerEnabled(): Boolean = AdConfig.bannerEnabled
+    override fun isBannerEnabled(): Boolean = AdConfig.bannerEnabled && ConsentManager.canRequestAds
 }
 
 /** Implementación Android: siempre devuelve el singleton [AdControllerImpl]. */
