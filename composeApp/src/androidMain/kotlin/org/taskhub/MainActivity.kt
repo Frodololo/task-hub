@@ -20,6 +20,8 @@ import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.russhwolf.settings.Settings
 import org.taskhub.platform.AndroidNotificationScheduler
 import org.taskhub.platform.AndroidSchedulerHolder
@@ -143,6 +145,13 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Firebase App Check (Play Integrity) — antes de cualquier llamada a
+        // Cloud Functions, para que Firebase adjunte el token de atestación
+        // que las funciones exigirán validar.
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+            PlayIntegrityAppCheckProviderFactory.getInstance()
+        )
 
         // Switch from splash theme to normal app theme before rendering
         setTheme(R.style.Theme_TaskHub)

@@ -101,6 +101,10 @@ kotlin {
             // Firebase Cloud Messaging
             implementation("com.google.firebase:firebase-messaging-ktx:24.1.0")
 
+            // Firebase App Check (Play Integrity) — impide que scripts externos
+            // invoquen las Cloud Functions directamente sin pasar por esta app.
+            implementation("com.google.firebase:firebase-appcheck-playintegrity:18.0.0")
+
             // Google Sign-In + Calendar
             implementation("com.google.android.gms:play-services-auth:21.2.0")
 

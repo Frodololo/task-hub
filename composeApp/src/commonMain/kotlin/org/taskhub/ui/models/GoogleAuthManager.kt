@@ -310,6 +310,15 @@ class GoogleAuthManager(
      *     hogar familiar entero porque el dueño elimina su cuenta destruiría
      *     datos que no son (solo) suyos.
      *
+     *     La lista de hogares se lee de FIRESTORE ([FirestoreRepository.loadUserHouseholds]
+     *     + el ID determinista del espacio Personal), NO de [householdStore]
+     *     (caché local): si la sync de `syncHouseholdsToCloud` nunca llegó a
+     *     completarse en este dispositivo, la caché local podía faltar hogares
+     *     donde el usuario seguía siendo miembro en Firestore, dejando su UID
+     *     huérfano en `taskHistory`/`chat` tras borrar la cuenta. Requiere red:
+     *     si el dispositivo está offline, se trata como fallo de cascada (ver
+     *     más abajo) en vez de asumir "sin hogares".
+     *
      *     Si CUALQUIER hogar de este bucle falla (offline, cascade parcial —
      *     ver [org.taskhub.network.HouseholdCascadeIncompleteException] —
      *     etc.), el fallo se ACUMULA y el resto de pasos (perfil global,
@@ -330,7 +339,18 @@ class GoogleAuthManager(
      */
     suspend fun deleteAccount(): Result<Unit> {
         val myId = currentUserId()
-        val households = householdStore.getSavedHouseholds()
+        if (myId != null && !repo.isOnline()) {
+            // Sin red no se puede leer la lista autoritativa de hogares desde
+            // Firestore — tratarlo como "sin hogares" borraría la cuenta Auth
+            // dejando el UID huérfano en hogares reales que no se pudieron
+            // consultar. Igual que un fallo de cascada: el usuario conserva la
+            // sesión para reintentarlo con conexión.
+            return Result.failure(AccountDeletionCascadeException())
+        }
+        val households = myId?.let { uid ->
+            val ids = (repo.loadUserHouseholds(uid) + repo.personalHouseholdId(uid)).distinct()
+            repo.getHouseholds(ids)
+        } ?: emptyList()
         var hadCascadeFailure = false
         for (h in households) {
             try {
