@@ -55,6 +55,11 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
 
         var showSettings by remember { mutableStateOf(false) }
         val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+        // Panel v18 (rendimiento): mismo hallazgo y mismo fix que HomeScreen.kt
+        // (panel v17) — antes se recalculaba en cada recomposición dentro del
+        // contenido de LazyColumn.
+        val personalHousehold = remember(households) { households.find { it.isPersonal } }
+        val sharedHouseholds = remember(households) { households.filter { !it.isPersonal } }
 
         if (showSettings) {
             HouseholdSettingsDialog(
@@ -95,11 +100,10 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
                 }
 
                 // Espacio Personal
-                val personal = households.find { it.isPersonal }
-                if (personal != null) {
+                if (personalHousehold != null) {
                     item {
                         HouseholdProfileCard(
-                            household = personal,
+                            household = personalHousehold,
                             icon = Icons.Default.Person,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -107,8 +111,7 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
                 }
 
                 // Hogares compartidos
-                val shared = households.filter { !it.isPersonal }
-                items(shared, key = { it.id }) { household ->
+                items(sharedHouseholds, key = { it.id }) { household ->
                     HouseholdProfileCard(
                         household = household,
                         icon = Icons.Default.Edit,

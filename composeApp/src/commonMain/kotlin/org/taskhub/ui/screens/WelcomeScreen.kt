@@ -32,6 +32,7 @@ import org.taskhub.ui.components.TaskHubTopBar
 import org.taskhub.ui.components.shouldReduceMotion
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.HomeScreenModel
+import org.taskhub.ui.theme.semanticColors
 
 /**
  * Landing screen sin ScreenModel propio de navegación: gestiona el diálogo
@@ -146,7 +147,10 @@ class WelcomeScreen : Screen {
                             .fillMaxWidth()
                             .height(56.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.tertiary
+                            // Panel v18 (accesibilidad): `colorScheme.tertiary` crudo sobre el
+                            // fondo de la pantalla fallaba WCAG AA (4.19:1 en Naturaleza claro,
+                            // bajo el umbral 4.5:1) — mismo fix que TaskDetailScreen.kt.
+                            contentColor = MaterialTheme.semanticColors.info
                         ),
                         shape = MaterialTheme.shapes.large
                     ) {

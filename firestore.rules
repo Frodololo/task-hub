@@ -3,7 +3,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ══════════════════════════════════════════════════════════
-    //  Task Hub — Reglas de seguridad (v12)
+    //  Task Hub — Reglas de seguridad (v13)
+    //
+    //  v13 editada 2026-09-26 (panel de expertos v18, especialista de
+    //  seguridad/AppSec): `members/{mid}.update` topaba `totalPoints`
+    //  (≤100000) y `appreciationGiven` (≤50) desde D10, pero no
+    //  `currentStreak`/`bestStreak` — un cliente modificado podía fijar la
+    //  racha a cualquier valor vía el mismo PATCH que usa
+    //  [MemberRepository.updateMemberStreak], sin pasar por StreakRules.kt
+    //  (afecta ranking y desbloqueo de logros de racha). Se añade el mismo
+    //  tipo de cota superior (3650 ≈ 10 años de racha diaria).
     //
     //  v12 editada 2026-09-24 (panel de expertos v17, auditoría desde cero,
     //  hallazgo CRÍTICO del especialista de funcionalidad end-to-end).
@@ -571,7 +580,16 @@ service cloud.firestore {
         // Sin esto, el propio dueño del documento podía escribir
         // `appreciationGiven` arbitrariamente alto: el presupuesto semanal
         // hoy solo lo hace respetar el cliente, no las reglas.
-        && request.resource.data.get('appreciationGiven', 0) <= 50;
+        && request.resource.data.get('appreciationGiven', 0) <= 50
+        // Panel v18 (seguridad): mismo tipo de cota que `totalPoints`/
+        // `appreciationGiven` arriba, aplicada ahora a la racha — antes un
+        // cliente modificado podía fijar `currentStreak`/`bestStreak` a
+        // cualquier valor vía el mismo PATCH que usa
+        // MemberRepository.updateMemberStreak, sin pasar por StreakRules.kt.
+        // 3650 ≈ 10 años de racha diaria ininterrumpida, muy por encima de
+        // cualquier valor legítimo.
+        && request.resource.data.get('currentStreak', 0) <= 3650
+        && request.resource.data.get('bestStreak', 0) <= 3650;
       // El propio dueño del documento también puede borrarlo — es la ruta que
       // usa [FirestoreRepository.leaveHousehold] (abandonar hogar / eliminar
       // cuenta) para borrar SU PROPIO miembro. Sin esta cláusula, cualquier

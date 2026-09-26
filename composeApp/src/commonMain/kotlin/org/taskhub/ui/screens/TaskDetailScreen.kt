@@ -841,7 +841,10 @@ private fun TaskDetailContent(
                     text = if (isCompletedToday) s("task_detail_completed_today") else s("task_detail_status_pending"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isCompletedToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                    // Panel v18 (accesibilidad): mismo fallo de contraste ya corregido en el
+                    // badge "obligatoria" de esta pantalla (línea ~1514) — `colorScheme.tertiary`
+                    // crudo fallaba WCAG AA (4.19:1 en Naturaleza claro).
+                    color = if (isCompletedToday) MaterialTheme.colorScheme.primary else MaterialTheme.semanticColors.warning
                 )
                 // D4: con asignaciones, completar pasa a ser siempre "completar mi
                 // asignación" vía AssignmentCard (sección Pendientes) — el botón

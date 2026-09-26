@@ -301,6 +301,9 @@ private fun TransferAmountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        // Panel v18 (UX): con la transferencia en vuelo, tocar fuera cerraba el
+        // diálogo sin que el usuario supiera que la petición seguía en curso.
+        properties = DialogProperties(dismissOnClickOutside = !isLoading),
         title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
             Column {

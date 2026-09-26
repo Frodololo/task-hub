@@ -23,11 +23,12 @@
  * debe ser una operación destructiva ni sorprender al usuario.
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { DocumentSnapshot, FieldValue } from "firebase-admin/firestore";
+import { DocumentSnapshot } from "firebase-admin/firestore";
 import { db, REGION } from "./admin.js";
 import { requireAuth, loadActiveMember, requireTrusted, loadHouseholdTimezone } from "./auth.js";
 import { calculateNextDueDate } from "./completionHelpers.js";
-import { TaskAssignmentDoc, TaskDoc, TaskHistoryDoc } from "./types.js";
+import { clampTotalPoints } from "./points.js";
+import { MemberDoc, TaskAssignmentDoc, TaskDoc, TaskHistoryDoc } from "./types.js";
 
 export interface UndoTaskCompletionRequest {
   householdId: string;
@@ -129,7 +130,13 @@ export const undoTaskCompletion = onCall<UndoTaskCompletionRequest, Promise<Undo
 
       // ── Escritura (todo o nada) ──
       if (memberExists) {
-        tx.update(memberRef, { totalPoints: FieldValue.increment(-historyRecord.points) });
+        // Panel v18 (seguridad/QA CRÍTICO): esta era la única función que movía
+        // `totalPoints` con `FieldValue.increment` ciego en vez de `clampTotalPoints`
+        // (ver KDoc en points.ts) — podía dejar el saldo negativo si el miembro ya
+        // había gastado los puntos que esta compleción le dio antes de deshacerla.
+        tx.update(memberRef, {
+          totalPoints: clampTotalPoints((memberSnap.data() as MemberDoc).totalPoints, -historyRecord.points)
+        });
       }
       tx.delete(historyDoc.ref);
 

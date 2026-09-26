@@ -79,6 +79,12 @@ class MainActivity : ComponentActivity() {
     // comentario de `NotificationPollWorker`): mismo backing store que usa Koin.
     private val householdStore by lazy { HouseholdStore(Settings()) }
 
+    // Mismo motivo/patrón que `householdStore` de arriba (Koin no disponible
+    // aquí todavía) — panel v18 (arquitectura): antes se construía una
+    // instancia ad-hoc inline en `onCreate` solo para leer `isAnalyticsOptOut`,
+    // sin guardarla en ninguna propiedad. Mismo backing store `Settings()`.
+    private val settingsStore by lazy { SettingsStore(Settings()) }
+
     /**
      * Extrae de [intent] los extras de deep link puestos por una notificación
      * local (ver el comentario de las propiedades `deepLink*` arriba) y
@@ -167,7 +173,7 @@ class MainActivity : ComponentActivity() {
 
         // Aplica la preferencia de opt-out de Analytics guardada (RGPD, ver
         // SettingsSheet) — necesita AndroidContextHolder.context ya asignado.
-        setAnalyticsCollectionEnabled(!SettingsStore(Settings()).isAnalyticsOptOut())
+        setAnalyticsCollectionEnabled(!settingsStore.isAnalyticsOptOut())
 
         // Hold a reference to the current Activity (para mostrar el interstitial de AdMob)
         AndroidContextHolder.activity = this

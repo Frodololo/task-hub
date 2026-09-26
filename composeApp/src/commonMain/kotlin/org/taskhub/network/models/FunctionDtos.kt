@@ -36,8 +36,7 @@ data class TaskCompletionFunctionResult(
 data class CompleteAssignmentRequest(
     val householdId: String,
     val taskId: String,
-    val assignmentId: String,
-    val expectedUpdateTime: String? = null
+    val assignmentId: String
 )
 
 @Serializable

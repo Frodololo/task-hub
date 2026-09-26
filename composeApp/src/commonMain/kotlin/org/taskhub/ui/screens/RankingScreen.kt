@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import org.taskhub.network.models.MemberResponse
 import org.taskhub.ui.components.AnimatedCounter
 import org.taskhub.ui.components.EffectCategory
@@ -39,6 +41,7 @@ import org.taskhub.ui.components.UserAvatar
 import org.taskhub.ui.components.defaultRoleEmoji
 import org.taskhub.ui.components.effectsEnabled
 import org.taskhub.ui.components.shouldReduceMotion
+import org.taskhub.ui.components.streakFireFontSize
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.MemberScreenModel
 import org.taskhub.ui.models.MemberUiState
@@ -132,18 +135,6 @@ internal fun RankingBody(householdId: String, memberModel: MemberScreenModel) {
     }
 }
 
-/**
- * Tamaño estático del emoji 🔥 de racha según tramo (informe delight #8):
- * 1-6 días tamaño normal, 7-29 +15%, 30+ +30%. Sin animación (if/else puro).
- * Misma fórmula duplicada en `StreakCard` de StatsScreen.kt (archivo
- * distinto, sin un sitio compartido natural para una función de una línea).
- */
-private fun streakFireFontSize(streak: Int) = when {
-    streak >= 30 -> 32.sp
-    streak >= 7 -> 28.sp
-    else -> 24.sp
-}
-
 /** Fila individual del ranking: medalla/posición, avatar, nombre/rol y puntos+racha. */
 @Composable
 private fun RankingRow(
@@ -154,6 +145,7 @@ private fun RankingRow(
     val appSettings = LocalAppSettings.current
     val s = { key: String -> AppStrings.get(key, appSettings.currentLanguage) }
     val animationsOn = effectsEnabled(EffectCategory.ANIMATIONS)
+    val navigator = LocalNavigator.currentOrThrow
 
     // Rebote de entrada solo para la medalla de oro (posición #1, §2.9 del
     // informe de delight) — remember(member.id) evita repetirlo si el mismo
@@ -196,7 +188,14 @@ private fun RankingRow(
     }
 
     Card(
+        // Panel v18 (UX): la fila era inerte pese a ser un listado de miembros
+        // comparándose entre sí — mismo destino (PublicProfileScreen) ya usado
+        // en HouseholdMemberList.kt para el mismo dato. Sin onClick si el
+        // miembro no tiene cuenta vinculada (userId == null: perfil infantil
+        // sin acceso propio, no hay perfil público al que navegar).
         modifier = modifier.fillMaxWidth(),
+        onClick = { member.userId?.let { uid -> navigator.push(PublicProfileScreen(uid, member)) } },
+        enabled = member.userId != null,
         colors = CardDefaults.cardColors(containerColor = bgColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (position <= 3) 2.dp else 0.dp)
     ) {

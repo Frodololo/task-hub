@@ -344,7 +344,13 @@ class HouseholdScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _newMessageText.value = text
+                // Panel v18 (funcionalidad): solo restaurar si el usuario no ha
+                // empezado ya a escribir un mensaje NUEVO mientras este envío
+                // seguía en vuelo — si no, este catch pisaba en silencio lo que
+                // ya había tecleado con el texto del intento fallido.
+                if (_newMessageText.value.isEmpty()) {
+                    _newMessageText.value = text
+                }
                 _sendMessageError.value = e.toUserMessage(settingsStore.getLanguage(), "messages_error_sending")
             }
         }

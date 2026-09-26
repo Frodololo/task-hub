@@ -86,25 +86,35 @@ class RewardsRepository(
             "createdAt" to FirestoreValue(integerValue = now.toString())
         )
 
-        val response: FirestoreDocumentResponse = client.post(
-            "$baseUrl/households/$householdId/rewards"
-        ) {
-            withAuth()
-            contentType(ContentType.Application.Json)
-            setBody(FirestoreDocument(fields))
-        }.body()
+        // Panel v18 (red/offline): invalidar en `finally` — mismo patrón ya
+        // aplicado a las escrituras de tareas (panel v17 punto 2), extendido
+        // aquí a recompensas.
+        val response: FirestoreDocumentResponse
+        try {
+            response = client.post(
+                "$baseUrl/households/$householdId/rewards"
+            ) {
+                withAuth()
+                contentType(ContentType.Application.Json)
+                setBody(FirestoreDocument(fields))
+            }.body()
+        } finally {
+            taskCache.clearRewards(householdId)
+        }
 
         val id = extractDocId(response.name, "createReward")
-        taskCache.clearRewards(householdId)
         return RewardResponse(id, householdId, title, description, cost, icon, createdBy, now)
     }
 
     /** Borra una recompensa. Requiere auth (escritura). */
     suspend fun deleteReward(householdId: String, rewardId: String) {
-        client.delete("$baseUrl/households/$householdId/rewards/$rewardId") {
-            withAuth()
+        try {
+            client.delete("$baseUrl/households/$householdId/rewards/$rewardId") {
+                withAuth()
+            }
+        } finally {
+            taskCache.clearRewards(householdId)
         }
-        taskCache.clearRewards(householdId)
     }
 
     /**

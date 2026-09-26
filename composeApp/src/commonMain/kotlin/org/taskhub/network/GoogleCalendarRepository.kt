@@ -69,9 +69,15 @@ class GoogleCalendarRepository(
 
     /** Busca por nombre en la lista de calendarios del usuario; null si ninguno coincide. */
     private suspend fun findCalendarIdByName(accessToken: String, summary: String): String? {
-        val response: CalendarListResponse = client.get("$calendarBaseUrl/users/me/calendarList") {
-            header("Authorization", "Bearer $accessToken")
-            parameter("fields", "items(id,summary)")
+        // Panel v18 (red/offline): mismo wrapper de reintento (backoff+jitter)
+        // ya usado por cualquier lectura de Firestore — antes un timeout/5xx
+        // transitorio de la API de Calendar abortaba de inmediato toda la
+        // sincronización de una tarea sin reintentar.
+        val response: CalendarListResponse = retryTransientReadFailure {
+            client.get("$calendarBaseUrl/users/me/calendarList") {
+                header("Authorization", "Bearer $accessToken")
+                parameter("fields", "items(id,summary)")
+            }
         }.body()
 
         return response.items?.firstOrNull { it.summary == summary }?.id
@@ -148,9 +154,11 @@ class GoogleCalendarRepository(
      */
     suspend fun validateToken(accessToken: String): Boolean {
         return try {
-            client.get("$calendarBaseUrl/calendars/primary") {
-                header("Authorization", "Bearer $accessToken")
-                parameter("fields", "id")
+            retryTransientReadFailure {
+                client.get("$calendarBaseUrl/calendars/primary") {
+                    header("Authorization", "Bearer $accessToken")
+                    parameter("fields", "id")
+                }
             }
             true
         } catch (e: CancellationException) {

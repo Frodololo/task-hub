@@ -373,13 +373,23 @@ class MemberRepository(
             "avatarUrl" to FirestoreValue(nullValue = "NULL_VALUE")
         )
 
-        client.patch("$baseUrl/households/$householdId/members/$memberId") {
-            withAuth()
-            updateMaskFieldPaths("leftAt", "displayName", "avatarUrl")
-            contentType(ContentType.Application.Json)
-            setBody(FirestoreDocument(fields))
+        // Panel v18 (red/offline): invalidar en `finally`, no solo tras éxito
+        // — mismo motivo que TaskRepository (panel v17 punto 2): ante un
+        // timeout/IOException ambiguo el servidor puede haber aplicado el
+        // soft-delete pese al error visto aquí, y `TaskCache` persiste en
+        // disco (sobrevive reinicios) — justo el nombre/avatar reales que
+        // esta anonimización RGPD existe para ocultar podían quedar servidos
+        // desde caché indefinidamente.
+        try {
+            client.patch("$baseUrl/households/$householdId/members/$memberId") {
+                withAuth()
+                updateMaskFieldPaths("leftAt", "displayName", "avatarUrl")
+                contentType(ContentType.Application.Json)
+                setBody(FirestoreDocument(fields))
+            }
+        } finally {
+            taskCache.clearMembers(householdId)
         }
-        taskCache.clearMembers(householdId)
 
         return true
     }
@@ -392,13 +402,16 @@ class MemberRepository(
         val fields = mapOf(
             "role" to FirestoreValue(stringValue = role)
         )
-        client.patch("$baseUrl/households/$householdId/members/$memberId") {
-            withAuth()
-            updateMaskFieldPaths("role")
-            contentType(ContentType.Application.Json)
-            setBody(FirestoreDocument(fields))
+        try {
+            client.patch("$baseUrl/households/$householdId/members/$memberId") {
+                withAuth()
+                updateMaskFieldPaths("role")
+                contentType(ContentType.Application.Json)
+                setBody(FirestoreDocument(fields))
+            }
+        } finally {
+            taskCache.clearMembers(householdId)
         }
-        taskCache.clearMembers(householdId)
     }
 
     // ────────────────────────────────────────────────────────
@@ -494,18 +507,27 @@ class MemberRepository(
             "bestStreak" to FirestoreValue(integerValue = bestStreak.toString()),
             "lastStreakDate" to FirestoreValue(integerValue = lastStreakDate.toString())
         )
-        client.patch("$baseUrl/households/$householdId/members/$memberId") {
-            withAuth()
-            updateMaskFieldPaths("currentStreak", "bestStreak", "lastStreakDate")
-            contentType(ContentType.Application.Json)
-            setBody(FirestoreDocument(fields))
+        // Panel v18 (red/offline): invalidar en `finally` — el comentario de
+        // abajo ya explicaba POR QUÉ hace falta invalidar la caché aquí, pero
+        // el `client.patch` no estaba envuelto en `try`, así que un fallo
+        // (incluido el timeout/IOException ambiguo que este comentario
+        // describe) saltaba directo a la excepción SIN pasar por la
+        // invalidación — el mismo caso que se decía cubrir quedaba sin cubrir.
+        try {
+            client.patch("$baseUrl/households/$householdId/members/$memberId") {
+                withAuth()
+                updateMaskFieldPaths("currentStreak", "bestStreak", "lastStreakDate")
+                contentType(ContentType.Application.Json)
+                setBody(FirestoreDocument(fields))
+            }
+        } finally {
+            // Las demás mutaciones de este archivo invalidan la caché tras
+            // escribir (createMember/deleteMember/updateMemberRole/addMemberPoints/
+            // appreciateMember...); esta se había quedado fuera — sin esto, un
+            // fallback a caché tras un fallo de red justo después de actualizar la
+            // racha devolvía currentStreak/bestStreak/lastStreakDate obsoletos.
+            taskCache.clearMembers(householdId)
         }
-        // Las demás mutaciones de este archivo invalidan la caché tras
-        // escribir (createMember/deleteMember/updateMemberRole/addMemberPoints/
-        // appreciateMember...); esta se había quedado fuera — sin esto, un
-        // fallback a caché tras un fallo de red justo después de actualizar la
-        // racha devolvía currentStreak/bestStreak/lastStreakDate obsoletos.
-        taskCache.clearMembers(householdId)
     }
 
     /**

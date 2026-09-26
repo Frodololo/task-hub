@@ -159,15 +159,18 @@ class NotificationRepository(
         val fields = mapOf(
             "read" to FirestoreValue(booleanValue = true)
         )
-        client.patch(
-            "$baseUrl/households/$householdId/notifications/$notificationId"
-        ) {
-            withAuth()
-            updateMaskFieldPaths("read")
-            contentType(ContentType.Application.Json)
-            setBody(FirestoreDocument(fields))
+        try {
+            client.patch(
+                "$baseUrl/households/$householdId/notifications/$notificationId"
+            ) {
+                withAuth()
+                updateMaskFieldPaths("read")
+                contentType(ContentType.Application.Json)
+                setBody(FirestoreDocument(fields))
+            }
+        } finally {
+            taskCache.clearNotifications(householdId)
         }
-        taskCache.clearNotifications(householdId)
     }
 
     /**

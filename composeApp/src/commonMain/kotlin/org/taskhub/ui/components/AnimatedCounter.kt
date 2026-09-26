@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 
 /**
  * Texto de un número que anima su transición al cambiar [value]: cuenta de
@@ -79,4 +81,16 @@ fun AnimatedCounter(
             scaleY = scale.value
         }
     )
+}
+
+/**
+ * Tamaño estático del emoji 🔥 de racha según tramo (informe delight #8):
+ * 1-6 días tamaño normal, 7-29 +15%, 30+ +30%. Sin animación (if/else puro).
+ * Compartida por `RankingRow` (RankingScreen.kt) y `StreakCard`
+ * (StatsScreen.kt) — antes duplicada byte a byte en ambos (panel v18).
+ */
+fun streakFireFontSize(streak: Int): TextUnit = when {
+    streak >= 30 -> 32.sp
+    streak >= 7 -> 28.sp
+    else -> 24.sp
 }

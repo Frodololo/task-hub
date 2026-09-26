@@ -42,6 +42,7 @@ import org.taskhub.ui.components.StatusDot
 import org.taskhub.ui.components.ShimmerList
 import org.taskhub.ui.components.StatChip
 import org.taskhub.ui.components.effectsEnabled
+import org.taskhub.ui.components.streakFireFontSize
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.Achievement
 import org.taskhub.ui.models.DayCount
@@ -179,18 +180,6 @@ internal fun StatsBody(householdId: String, memberId: String, statsModel: StatsS
 }
 
 // ── UI Components ──────────────────────────────────────────
-
-/**
- * Tamaño estático del emoji 🔥 de racha según tramo (informe delight #8):
- * 1-6 días tamaño normal, 7-29 +15%, 30+ +30%. Sin animación (if/else puro).
- * Misma fórmula duplicada en `RankingRow` de RankingScreen.kt (archivo
- * distinto, sin un sitio compartido natural para una función de una línea).
- */
-private fun streakFireFontSize(streak: Int) = when {
-    streak >= 30 -> 32.sp
-    streak >= 7 -> 28.sp
-    else -> 24.sp
-}
 
 /** Tarjeta con racha actual y mejor racha (en días consecutivos). */
 @Composable

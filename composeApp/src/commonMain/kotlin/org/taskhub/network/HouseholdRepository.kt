@@ -336,13 +336,21 @@ class HouseholdRepository(
      */
     suspend fun updateHouseholdOwner(householdId: String, newOwnerId: String) {
         val fields = mapOf("ownerId" to FirestoreValue(stringValue = newOwnerId))
-        client.patch("$baseUrl/households/$householdId") {
-            withAuth()
-            updateMaskFieldPaths("ownerId")
-            contentType(ContentType.Application.Json)
-            setBody(FirestoreDocument(fields))
+        // Panel v18 (red/offline): invalidar en `finally` — mismo motivo que
+        // el resto de escrituras de tareas (panel v17 punto 2). Un fallo
+        // ambiguo aquí puede dejar la caché del hogar (persistida en disco)
+        // sirviendo el owner ANTERIOR mientras el servidor ya aplicó la
+        // transferencia, y `ownerId` gatea `isOwner(hid)` en firestore.rules.
+        try {
+            client.patch("$baseUrl/households/$householdId") {
+                withAuth()
+                updateMaskFieldPaths("ownerId")
+                contentType(ContentType.Application.Json)
+                setBody(FirestoreDocument(fields))
+            }
+        } finally {
+            taskCache.clearHouseholdDoc(householdId)
         }
-        taskCache.clearHouseholdDoc(householdId)
     }
 
     /** Find a household by invite code. Uses the invites/{code} map (no list). */
