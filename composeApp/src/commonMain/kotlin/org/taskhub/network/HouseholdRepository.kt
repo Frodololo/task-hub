@@ -16,6 +16,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import org.taskhub.network.models.HouseholdResponse
 import org.taskhub.network.models.MessageResponse
+import org.taskhub.platform.AppLog
 import org.taskhub.platform.secureRandomInt
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SavedHousehold
@@ -113,7 +114,8 @@ class HouseholdRepository(
                 createInvite(inviteCode, id)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("HouseholdRepository", "createHousehold: createInvite failed for householdId=$id, inviteCode=$inviteCode", e)
                 // No crítico: sin invite, otros no pueden unirse por código.
             }
         }
@@ -144,7 +146,8 @@ class HouseholdRepository(
             getHousehold(personalId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("HouseholdRepository", "getOrCreatePersonalHousehold: getHousehold failed for personalId=$personalId", e)
             null
         }
         if (existing != null) return existing
@@ -169,6 +172,7 @@ class HouseholdRepository(
                 setBody(FirestoreDocument(fields))
             }.body()
         } catch (e: FirestoreException) {
+            AppLog.w("HouseholdRepository", "getOrCreatePersonalHousehold: create failed for personalId=$personalId, uid=$uid", e)
             // Carrera entre dispositivos: el mismo usuario abrió la app en dos
             // sitios a la vez y ambos intentaron crear el mismo ID determinista.
             // El que llega segundo recibe ALREADY_EXISTS: no es un fallo real,
@@ -232,9 +236,11 @@ class HouseholdRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: FirestoreException) {
+            AppLog.w("HouseholdRepository", "getHousehold: fetch failed for id=$id", e)
             if (e.statusCode == 404 || e.statusCode == 403) throw e
             taskCache.getCachedHousehold(id) ?: throw e
         } catch (e: Exception) {
+            AppLog.w("HouseholdRepository", "getHousehold: fetch failed for id=$id", e)
             taskCache.getCachedHousehold(id) ?: throw e
         }
     }
@@ -266,6 +272,7 @@ class HouseholdRepository(
                         getHousehold(h.id)
                         true
                     } catch (e: FirestoreException) {
+                        AppLog.w("HouseholdRepository", "reconcileHouseholds: getHousehold failed for id=${h.id}", e)
                         if (e.statusCode == 404 || e.statusCode == 403) {
                             false
                         } else {
@@ -273,7 +280,8 @@ class HouseholdRepository(
                         }
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        AppLog.e("HouseholdRepository", "reconcileHouseholds: unexpected failure checking id=${h.id}", e)
                         true // red/timeout/etc: conservar
                     }
                     if (stillExists) h else null
@@ -311,7 +319,8 @@ class HouseholdRepository(
                         getHousehold(id)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        AppLog.w("HouseholdRepository", "getHouseholds: skipping stale id=$id", e)
                         null // stale ID from local store — skip
                     }
                 }
@@ -447,13 +456,15 @@ class HouseholdRepository(
                     )
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppLog.w("HouseholdRepository", "sendMessage: createNotification failed for householdId=$householdId, recipient=${recipient.id}", e)
                     // No crítico: el mensaje ya se envió, la notificación es un efecto secundario.
                 }
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("HouseholdRepository", "sendMessage: notification fan-out failed (getMembers?) for householdId=$householdId", e)
             // No crítico: fallo listando miembros — el mensaje ya se envió.
         }
 
@@ -508,7 +519,8 @@ class HouseholdRepository(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("HouseholdRepository", "purgeOldMessages: delete failed for householdId=$householdId, messageId=${message.id}", e)
                 // Best-effort, ver KDoc de la función.
             }
         }
@@ -540,7 +552,8 @@ class HouseholdRepository(
             getMessages(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("HouseholdRepository", "anonymizeMemberMessages: getMessages failed for householdId=$householdId", e)
             return false
         }
         var allOk = true
@@ -554,7 +567,8 @@ class HouseholdRepository(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("HouseholdRepository", "anonymizeMemberMessages: patch failed for householdId=$householdId, messageId=${message.id}", e)
                 // Se prioriza anonimizar el resto de mensajes (best-effort),
                 // pero el fallo se acumula en el resultado — ver KDoc arriba.
                 allOk = false

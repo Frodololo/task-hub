@@ -20,6 +20,7 @@ import org.taskhub.network.models.Subtask
 import org.taskhub.network.models.TaskAssignmentResponse
 import org.taskhub.network.models.TaskHistoryResponse
 import org.taskhub.network.models.TaskResponse
+import org.taskhub.platform.AppLog
 import org.taskhub.storage.SettingsStore
 import org.taskhub.storage.TaskCache
 import org.taskhub.ui.i18n.AppStrings
@@ -277,9 +278,11 @@ class TaskRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: FirestoreException) {
+            AppLog.w("TaskRepository", "getTasks: fetch failed for householdId=$householdId, falling back to cache", e)
             if (e.statusCode == 404 || e.statusCode == 403) throw e
             taskCache.getCachedTasks(householdId) ?: throw e
         } catch (e: Exception) {
+            AppLog.e("TaskRepository", "getTasks: fetch failed for householdId=$householdId, falling back to cache", e)
             taskCache.getCachedTasks(householdId) ?: throw e
         }
     }
@@ -325,9 +328,11 @@ class TaskRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: FirestoreException) {
+            AppLog.w("TaskRepository", "getTaskHistory: fetch failed for householdId=$householdId, falling back to cache", e)
             if (e.statusCode == 404 || e.statusCode == 403) throw e
             taskCache.getCachedTaskHistory(householdId) ?: emptyList()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("TaskRepository", "getTaskHistory: fetch failed for householdId=$householdId, falling back to cache", e)
             taskCache.getCachedTaskHistory(householdId) ?: emptyList()
         }
     }
@@ -364,7 +369,8 @@ class TaskRepository(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("TaskRepository", "purgeOldTaskHistory: delete failed for householdId=$householdId, recordId=${record.id}", e)
                 // Best-effort, ver KDoc de la función.
             }
         }
@@ -443,7 +449,8 @@ class TaskRepository(
                     )
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppLog.w("TaskRepository", "assignTask: createNotification failed for taskId=$taskId, memberId=$memberId", e)
                     // No crítico: la asignación ya se creó, la notificación es un efecto secundario.
                 }
             }
@@ -474,9 +481,11 @@ class TaskRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: FirestoreException) {
+            AppLog.w("TaskRepository", "getAssignments: fetch failed for taskId=$taskId, falling back to cache", e)
             if (e.statusCode == 404 || e.statusCode == 403) throw e
             taskCache.getCachedAssignments(householdId, taskId) ?: throw e
         } catch (e: Exception) {
+            AppLog.e("TaskRepository", "getAssignments: fetch failed for taskId=$taskId, falling back to cache", e)
             taskCache.getCachedAssignments(householdId, taskId) ?: throw e
         }
     }
@@ -487,7 +496,8 @@ class TaskRepository(
             getAssignments(householdId, taskId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("TaskRepository", "deleteAssignments: getAssignments failed for taskId=$taskId", e)
             emptyList()
         }
         deleteAssignmentDocs(householdId, taskId, assignments)
@@ -511,7 +521,8 @@ class TaskRepository(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("TaskRepository", "deleteAssignmentDocs: delete failed for taskId=$taskId, assignmentId=${assignment.id}", e)
                 // No crítico: si ya no existe, seguimos.
             }
         }
@@ -549,7 +560,8 @@ class TaskRepository(
             getAssignments(householdId, taskId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("TaskRepository", "replaceAssignments: getAssignments failed for taskId=$taskId", e)
             emptyList()
         }
 
@@ -584,7 +596,8 @@ class TaskRepository(
                             getAssignments(householdId, task.id)
                         } catch (e: CancellationException) {
                             throw e
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            AppLog.e("TaskRepository", "getAllAssignments: getAssignments failed for taskId=${task.id}", e)
                             emptyList() // Task has no assignments yet — skip
                         }
                     }
@@ -786,6 +799,7 @@ class TaskRepository(
                 // MEDIO).
                 return nextDueAt
             } catch (e: FirestoreException) {
+                AppLog.w("TaskRepository", "updateTask: optimistic write conflict for taskId=$taskId, attempt=$attempt", e)
                 val isConflict = e.code == "FAILED_PRECONDITION" || e.code == "ABORTED"
                 if (!isConflict) throw e
                 if (attempt == FirestoreClient.OPTIMISTIC_WRITE_MAX_RETRIES - 1) {
@@ -799,6 +813,7 @@ class TaskRepository(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskRepository", "updateTask: patch failed for taskId=$taskId, attempt=$attempt", e)
                 // Timeout/IOException (AMBIGUOUS): ver KDoc de [MemberRepository.addMemberPoints].
                 if (e.errorCategory() == ErrorCategory.AMBIGUOUS) {
                     taskCache.clearTasks(householdId)
@@ -848,12 +863,14 @@ class TaskRepository(
                 taskCache.clearTasks(householdId)
                 return
             } catch (e: FirestoreException) {
+                AppLog.w("TaskRepository", "updateSubtasks: optimistic write conflict for taskId=$taskId, attempt=$attempt", e)
                 val isConflict = e.code == "FAILED_PRECONDITION" || e.code == "ABORTED"
                 if (!isConflict || attempt == FirestoreClient.OPTIMISTIC_WRITE_MAX_RETRIES - 1) throw e
                 // Otro escritor ganó la carrera: reintentar con el valor fresco.
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskRepository", "updateSubtasks: patch failed for taskId=$taskId, attempt=$attempt", e)
                 // Timeout/IOException (AMBIGUOUS): ver KDoc de [MemberRepository.addMemberPoints].
                 if (e.errorCategory() == ErrorCategory.AMBIGUOUS) {
                     taskCache.clearTasks(householdId)
@@ -957,7 +974,8 @@ class TaskRepository(
             getTasks(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("TaskRepository", "anonymizeMemberComments: getTasks failed for householdId=$householdId", e)
             return false
         }
         return coroutineScope {
@@ -967,7 +985,8 @@ class TaskRepository(
                         getComments(householdId, task.id)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        AppLog.e("TaskRepository", "anonymizeMemberComments: getComments failed for taskId=${task.id}", e)
                         return@async false
                     }
                     var allOk = true
@@ -983,7 +1002,8 @@ class TaskRepository(
                             }
                         } catch (e: CancellationException) {
                             throw e
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            AppLog.e("TaskRepository", "anonymizeMemberComments: patch failed for taskId=${task.id}, commentId=${comment.id}", e)
                             // Se prioriza anonimizar el resto de comentarios
                             // (best-effort), pero el fallo se acumula — ver KDoc arriba.
                             allOk = false
@@ -1018,7 +1038,8 @@ class TaskRepository(
             getTaskHistory(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("TaskRepository", "anonymizeMemberTaskHistory: getTaskHistory failed for householdId=$householdId", e)
             return false
         }
         var allOk = true
@@ -1032,7 +1053,8 @@ class TaskRepository(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("TaskRepository", "anonymizeMemberTaskHistory: patch failed for householdId=$householdId, recordId=${record.id}", e)
                 // Se prioriza anonimizar el resto del historial (best-effort),
                 // pero el fallo se acumula en el resultado — ver KDoc arriba.
                 allOk = false

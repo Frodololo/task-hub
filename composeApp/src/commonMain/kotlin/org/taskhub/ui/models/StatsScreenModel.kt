@@ -24,6 +24,7 @@ import org.taskhub.network.models.MemberResponse
 import org.taskhub.network.models.TaskAssignmentResponse
 import org.taskhub.network.models.TaskHistoryResponse
 import org.taskhub.network.models.TaskResponse
+import org.taskhub.platform.AppLog
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.i18n.toUserMessage
 
@@ -116,7 +117,9 @@ class StatsScreenModel(
                         repo.purgeOldTaskHistory(householdId, history)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        AppLog.w("StatsScreenModel", "loadStats: purgeOldTaskHistory failed", e)
+                    }
                 } else {
                     // Miembro no encontrado: el resultado de achievementsDeferred no se
                     // necesita — se cancela para no dejarlo corriendo de fondo sin motivo.
@@ -132,6 +135,7 @@ class StatsScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("StatsScreenModel", "loadStats failed for household $householdId", e)
                 _uiState.value = StatsUiState.Error(
                     e.toUserMessage(lang, "stats_error_loading")
                 )

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.models.UserProfile
+import org.taskhub.platform.AppLog
 import org.taskhub.platform.HapticKind
 import org.taskhub.ui.components.hapticsEnabled
 import org.taskhub.platform.vibrate
@@ -89,6 +90,7 @@ class ProfileScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("ProfileScreenModel", "loadMyProfile failed", e)
                 _myProfileState.value = ProfileUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "profile_error_loading_own")
                 )
@@ -113,6 +115,7 @@ class ProfileScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("ProfileScreenModel", "loadUserProfile failed for user $userId", e)
                 _otherProfileState.value = ProfileUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "profile_error_loading")
                 )
@@ -150,6 +153,7 @@ class ProfileScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("ProfileScreenModel", "saveProfile failed for user $userId", e)
                 _saveState.value = ProfileSaveState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "profile_error_saving")
                 )

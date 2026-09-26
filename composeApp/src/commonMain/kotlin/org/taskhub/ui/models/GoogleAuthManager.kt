@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
+import org.taskhub.platform.AppLog
 import org.taskhub.platform.GoogleSignInResult
 import org.taskhub.platform.GoogleSignInResultHolder
 import org.taskhub.platform.cancelGoogleSignIn
@@ -279,7 +280,8 @@ class GoogleAuthManager(
                 repo.invalidateAllCurrentMembers()
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("GoogleAuthManager", "signOut: invalidateAllCurrentMembers failed", e)
                 // No crítico: la caché se autocorrige en la siguiente resolución.
             }
         }
@@ -289,7 +291,8 @@ class GoogleAuthManager(
                     repo.clearFcmToken(uidBeingSignedOut)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppLog.w("GoogleAuthManager", "signOut: clearFcmToken failed", e)
                     // No crítico: el token se sobrescribirá en el próximo login de esa cuenta.
                 }
             }
@@ -362,7 +365,8 @@ class GoogleAuthManager(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("GoogleAuthManager", "deleteAccount: household cascade delete/leave failed for ${h.id}", e)
                 hadCascadeFailure = true
             }
         }
@@ -374,7 +378,8 @@ class GoogleAuthManager(
                 repo.deleteUserProfile(myId)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("GoogleAuthManager", "deleteAccount: deleteUserProfile failed", e)
                 // No crítico: el perfil global huérfano no es un dato con
                 // identidad reclamable sin la cuenta que acabamos de borrar.
             }
@@ -386,7 +391,8 @@ class GoogleAuthManager(
                     revokeGoogleCalendarAccess()
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppLog.w("GoogleAuthManager", "deleteAccount: revokeGoogleCalendarAccess failed", e)
                     // No crítico: el access token en sí caduca solo en ~1h.
                 }
             }
@@ -398,6 +404,7 @@ class GoogleAuthManager(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLog.e("GoogleAuthManager", "deleteAccount: final deleteFirebaseAccount step failed", e)
             Result.failure(e)
         }
     }
@@ -480,6 +487,7 @@ class GoogleAuthManager(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLog.e("GoogleAuthManager", "handleGoogleToken: sign-in failed", e)
             consecutiveSignInFailures++
             // Nunca `e.message` crudo (panel de expertos v10, UX):
             // `repo.signInWithGoogle` puede lanzar un `FirestoreException` con
@@ -522,7 +530,8 @@ class GoogleAuthManager(
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("GoogleAuthManager", "syncGoogleAvatar failed", e)
             // No crítico: se reintenta en el próximo login.
         }
     }
@@ -582,7 +591,8 @@ class GoogleAuthManager(
             restoreHouseholds(uid)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("GoogleAuthManager", "restoreFromCloudOnStartup failed", e)
             // No crítico: se reintenta en el próximo arranque/login.
         }
     }
@@ -599,7 +609,8 @@ class GoogleAuthManager(
             householdStore.replacePersonalHousehold(personal.id)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("GoogleAuthManager", "repointPersonalHousehold failed", e)
             // Offline/transitorio: App.kt lo reintenta en el próximo arranque.
         }
     }
@@ -633,7 +644,8 @@ class GoogleAuthManager(
                 repo.saveUserHouseholds(uid, ids)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("GoogleAuthManager", "syncHouseholdsToCloud failed", e)
                 // No crítico — se reintenta en el próximo cambio
             }
         }

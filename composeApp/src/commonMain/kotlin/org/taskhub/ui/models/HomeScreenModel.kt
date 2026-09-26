@@ -25,6 +25,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.RecurrenceRules
 import org.taskhub.network.models.TaskResponse
+import org.taskhub.platform.AppLog
 import org.taskhub.platform.updateWidgetPendingTasks
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SavedHousehold
@@ -91,11 +92,12 @@ class HomeScreenModel(
                                 repo.getTasks(h.id)
                             } catch (e: CancellationException) {
                                 throw e
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
                                 // No se distingue "hogar borrado" de un fallo real
                                 // (token caducado, 500, blip de red) — se expone en
                                 // failedHouseholdIds para que la UI pueda avisar en
                                 // vez de silenciarlo como "0 tareas".
+                                AppLog.e("HomeScreenModel", "loadAllTasks: getTasks failed for household ${h.id}", e)
                                 failedHouseholdIds += h.id
                                 emptyList()
                             }
@@ -130,6 +132,7 @@ class HomeScreenModel(
                 // puede sobrescribir el resultado correcto de la carga nueva.
                 throw e
             } catch (e: Exception) {
+                AppLog.e("HomeScreenModel", "loadAllTasks failed", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.toUserMessage(settingsStore.getLanguage(), "task_error_loading")
@@ -191,6 +194,7 @@ class HomeScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("HomeScreenModel", "loadHouseholdPreview failed for household $householdId", e)
                 _previewTasks.value = _previewTasks.value + (
                     householdId to HouseholdPreviewState.Error(
                         e.toUserMessage(settingsStore.getLanguage(), "task_error_loading")

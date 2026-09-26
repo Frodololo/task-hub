@@ -307,6 +307,7 @@ class TaskScreenModel(
                 // llegó al servidor, así que no es "sin conexión" (evita
                 // confundir "sin acceso"/"servidor caído" con "sin conexión",
                 // ver HouseholdScreenModel.loadHousehold).
+                AppLog.e("TaskScreenModel", "loadTasks failed for household=$householdId", e)
                 _isOffline.value = e.errorCategory() == ErrorCategory.NO_CONNECTION
                 _listState.value = TaskListUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_loading")
@@ -424,6 +425,7 @@ class TaskScreenModel(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
+                        AppLog.e("TaskScreenModel", "createTask: assignTask failed, rolling back task ${task.id}", e)
                         rollbackUnassignedTask(householdId, task.id)
                         throw e
                     }
@@ -445,6 +447,7 @@ class TaskScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "createTask failed", e)
                 _actionState.value = TaskActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_creating")
                 )
@@ -479,14 +482,16 @@ class TaskScreenModel(
             repo.deleteAssignments(householdId, taskId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("TaskScreenModel", "rollbackUnassignedTask: deleteAssignments failed for task $taskId", e)
             // Best-effort: intentamos borrar la tarea igualmente.
         }
         try {
             repo.deleteTask(householdId, taskId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("TaskScreenModel", "rollbackUnassignedTask: deleteTask failed for task $taskId", e)
             // No crítico: ver KDoc de la función (limitación conocida).
         }
     }
@@ -624,7 +629,9 @@ class TaskScreenModel(
                     notificationScheduler.cancelReminder(taskId)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "completeTask: cancelReminder failed for task $taskId", e)
+                }
 
                 // Tarea hecha → borrar el evento de Calendar vinculado, si lo
                 // hay, y sincronizar ya la asignación de la siguiente
@@ -645,7 +652,9 @@ class TaskScreenModel(
                     }
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "completeTask: calendar sync failed for task $taskId", e)
+                }
 
                 // Update streak + achievements reusing memberBefore (evita 2
                 // lecturas extra de getMembers): la racha aún no se ha tocado
@@ -661,7 +670,9 @@ class TaskScreenModel(
                     }
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "completeTask: streak/achievements update failed for task $taskId", e)
+                }
 
                 _actionState.value = TaskActionState.Success
                 buzz(HapticKind.SUCCESS)
@@ -682,10 +693,13 @@ class TaskScreenModel(
                     }
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "completeTask: analytics/interstitial failed for task $taskId", e)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "completeTask failed for task $taskId", e)
                 pendingCompletion = null
                 _undoState.value = null
                 if (e is FirestoreRepository.TaskCompletionConflictException) {
@@ -783,6 +797,7 @@ class TaskScreenModel(
                 // revertida (ver KDoc arriba) — no crítico para la
                 // integridad de datos, pero SÍ debe ser visible: antes no
                 // había ninguna señal observable de este fallo parcial.
+                AppLog.e("TaskScreenModel", "undoCompleteTask failed", e)
                 _undoError.value = e.toUserMessage(settingsStore.getLanguage(), "task_error_undo")
             }
         }
@@ -832,10 +847,13 @@ class TaskScreenModel(
                     }
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "reassignTaskCompletion: checkAndAwardAchievements failed", e)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "reassignTaskCompletion failed", e)
                 _reassignState.value = TaskActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_reassigning")
                 )
@@ -885,7 +903,9 @@ class TaskScreenModel(
                     }
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "completeAssignment: calendar sync failed for task $taskId", e)
+                }
 
                 // Racha + logros: mismo patrón que completeTask (ver su comentario) —
                 // antes esta función solo otorgaba puntos sin actualizar racha ni
@@ -902,7 +922,9 @@ class TaskScreenModel(
                     }
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "completeAssignment: streak/achievements update failed for task $taskId", e)
+                }
 
                 _actionState.value = TaskActionState.Success
                 buzz(HapticKind.SUCCESS)
@@ -912,6 +934,7 @@ class TaskScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "completeAssignment failed for task $taskId", e)
                 if (e is FirestoreRepository.AssignmentCompletionConflictException) {
                     // Mismo motivo que en completeTask: mensaje vía AppStrings
                     // (no el string fijo en español del repo) y recarga del
@@ -964,7 +987,8 @@ class TaskScreenModel(
                     repo.resolveCurrentMember(householdId)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppLog.w("TaskScreenModel", "loadTaskDetail: resolveCurrentMember failed", e)
                     null
                 }
                 _currentMemberId.value = myMemberId
@@ -972,6 +996,7 @@ class TaskScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "loadTaskDetail failed for task $taskId", e)
                 _detailState.value = TaskDetailUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_loading_single")
                 )
@@ -1008,6 +1033,7 @@ class TaskScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "assignMembers failed for task $taskId", e)
                 _actionState.value = TaskActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_assigning")
                 )
@@ -1117,12 +1143,14 @@ class TaskScreenModel(
                 // fue editada por otro miembro entre nuestra lectura y
                 // escritura, repetidamente, hasta agotar los reintentos de
                 // concurrencia optimista.
+                AppLog.w("TaskScreenModel", "updateTask: conflict for task $taskId", e)
                 _actionState.value = TaskActionState.Error(s("task_error_conflict"))
                 // Recargar el detalle para que la UI muestre la versión real
                 // (la de quien ganó la carrera) en vez de dejar en pantalla
                 // los campos que el usuario intentó guardar sin éxito.
                 loadTaskDetail(householdId, taskId)
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "updateTask failed for task $taskId", e)
                 _actionState.value = TaskActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_updating")
                 )
@@ -1145,6 +1173,7 @@ class TaskScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "deleteTask failed for task $taskId", e)
                 _actionState.value = TaskActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_deleting")
                 )
@@ -1226,7 +1255,8 @@ class TaskScreenModel(
                 repo.addMemberAchievement(householdId, member.id, achievementId)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("TaskScreenModel", "checkAndAwardAchievements: addMemberAchievement failed for $achievementId", e)
                 // Non-critical failure
             }
         }
@@ -1292,7 +1322,8 @@ class TaskScreenModel(
                 loadTaskDetail(householdId, taskId)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("TaskScreenModel", "toggleSubtask failed for task $taskId", e)
                 // Non-critical; detail will be stale until next load
             } finally {
                 subtaskTogglesInFlight -= taskId
@@ -1370,6 +1401,7 @@ class TaskScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskScreenModel", "syncTaskToCalendarNow failed for task ${task.id}", e)
                 _calendarActionState.value = CalendarActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "calendar_sync_error")
                 )
@@ -1403,7 +1435,8 @@ class TaskScreenModel(
             calendarSync.onTaskAssigned(householdId, household.name, household.isPersonal, assignments)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("TaskScreenModel", "syncCalendarOnAssigned failed for household $householdId", e)
             // Best-effort: se reintenta en el próximo reconcile.
         }
     }
@@ -1417,7 +1450,8 @@ class TaskScreenModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("TaskScreenModel", "syncCalendarOnUnassigned failed for task $taskId", e)
             // Best-effort: el evento huérfano queda hasta el próximo reconcile.
         }
     }

@@ -62,6 +62,7 @@ import org.taskhub.storage.SettingsStore
 import org.taskhub.storage.TaskCache
 import org.taskhub.platform.secureRandomInt
 import org.taskhub.platform.logAnalyticsEvent
+import org.taskhub.platform.AppLog
 import org.taskhub.ui.i18n.AppStrings
 
 /**
@@ -169,7 +170,8 @@ open class FirestoreRepository(
             getHousehold(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "isHouseholdOwner: getHousehold failed for household=$householdId", e)
             return false
         }
         return localId == household.ownerId
@@ -243,6 +245,7 @@ open class FirestoreRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "requestSignInWithIdp: signInWithIdp HTTP request failed", e)
             throw firestoreClient.redactApiKey(e)
         }
 
@@ -376,7 +379,8 @@ open class FirestoreRepository(
             true
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "isOnline: transport failure probing Firestore", e)
             // Fallo de transporte (sin red): no se llegó a Firestore.
             false
         }
@@ -413,7 +417,8 @@ open class FirestoreRepository(
             logAnalyticsEvent("member_anonymization_incomplete")
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "reportAnonymizationIncomplete: failed to log analytics event", e)
             // No crítico: es solo una señal de telemetría best-effort.
         }
     }
@@ -504,7 +509,8 @@ open class FirestoreRepository(
             client.delete("$baseUrl/invites/${household.inviteCode}") { withAuth() }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteHousehold: failed to delete invite code for household=$householdId", e)
             // No crítico: ver KDoc de deleteHousehold (best-effort por documento).
         }
 
@@ -618,7 +624,8 @@ open class FirestoreRepository(
                             true
                         } catch (e: CancellationException) {
                             throw e
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            AppLog.e("FirestoreRepository", "deleteAllDocuments: failed to delete $collectionUrl/$id", e)
                             false
                         }
                     }
@@ -651,7 +658,8 @@ open class FirestoreRepository(
             getMembers(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "leaveHousehold: getMembers failed for household=$householdId", e)
             emptyList()
         }
         val toDelete = members.filter { it.userId != null && it.userId in identities }
@@ -671,6 +679,7 @@ open class FirestoreRepository(
             try {
                 deleteHousehold(householdId)
             } catch (e: FirestoreException) {
+                AppLog.w("FirestoreRepository", "leaveHousehold: deleteHousehold failed for household=$householdId (status=${e.statusCode})", e)
                 // Dos miembros abandonando casi a la vez pueden intentar borrar
                 // el mismo hogar; si ya no existe (404), el objetivo -que el
                 // hogar no exista- ya se cumplió, así que no es un fallo real.
@@ -695,7 +704,8 @@ open class FirestoreRepository(
             getHousehold(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "leaveHousehold: getHousehold failed for household=$householdId", e)
             null
         }
         if (household != null && household.ownerId in identities) {
@@ -709,7 +719,8 @@ open class FirestoreRepository(
                     householdRepository.updateHouseholdOwner(householdId, successor.userId)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppLog.e("FirestoreRepository", "leaveHousehold: owner transfer to member=${successor.id} failed for household=$householdId", e)
                     // No crítico: mejor completar el abandono/borrado de
                     // cuenta del usuario actual que bloquearlo por un fallo
                     // al transferir la propiedad (best-effort, igual que el
@@ -732,7 +743,8 @@ open class FirestoreRepository(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("FirestoreRepository", "leaveHousehold: failed to delete member doc ${member.id} in household=$householdId", e)
                 // No crítico: si el doc ya no existe, seguimos.
             }
             // Borra también los logros del miembro y lo purga de
@@ -746,14 +758,16 @@ open class FirestoreRepository(
                 deleteAllDocuments("$baseUrl/households/$householdId/members/${member.id}/achievements")
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("FirestoreRepository", "leaveHousehold: failed to delete achievements for member=${member.id} in household=$householdId", e)
                 // No crítico: ver comentario de arriba (best-effort).
             }
             try {
                 purgeMemberFromTasks(householdId, member.id)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("FirestoreRepository", "leaveHousehold: purgeMemberFromTasks failed for member=${member.id} in household=$householdId", e)
                 // No crítico: ver comentario de arriba (best-effort).
             }
         }
@@ -869,14 +883,16 @@ open class FirestoreRepository(
             getHousehold(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteMember: getHousehold failed for household=$householdId", e)
             null
         }
         val targetMember = try {
             getMembers(householdId).find { it.id == memberId }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteMember: getMembers failed for household=$householdId while resolving target member=$memberId", e)
             null
         }
         if (household != null && targetMember != null && targetMember.userId == household.ownerId) {
@@ -884,7 +900,8 @@ open class FirestoreRepository(
                 getMembers(householdId).filterNot { it.id == memberId }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("FirestoreRepository", "deleteMember: getMembers failed for household=$householdId while computing remaining members", e)
                 emptyList()
             }
             val plan = HouseholdRules.planOwnerSuccession(household.ownerId, targetMember.userId, remaining)
@@ -896,7 +913,8 @@ open class FirestoreRepository(
                     householdRepository.updateHouseholdOwner(householdId, plan.successorUserId)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppLog.e("FirestoreRepository", "deleteMember: owner transfer to member=${plan.successorMemberId} failed for household=$householdId", e)
                     // No crítico: mejor completar la expulsión que bloquearla
                     // por un fallo al transferir la propiedad (best-effort,
                     // igual que en leaveHousehold).
@@ -910,7 +928,8 @@ open class FirestoreRepository(
             purgeMemberFromTasks(householdId, memberId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteMember: purgeMemberFromTasks failed for member=$memberId in household=$householdId", e)
             // No crítico: ver KDoc de deleteMember.
         }
         // Anonimiza los mensajes de chat del miembro expulsado — mismo patrón
@@ -930,7 +949,8 @@ open class FirestoreRepository(
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteMember: anonymizeMemberMessages failed for member=$memberId in household=$householdId", e)
             // No crítico: ver KDoc de deleteMember.
         }
         // Anonimiza también los comentarios de tarea del miembro expulsado —
@@ -947,7 +967,8 @@ open class FirestoreRepository(
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteMember: anonymizeMemberComments failed for member=$memberId in household=$householdId", e)
             // No crítico: ver KDoc de deleteMember.
         }
         // Igual que arriba, pero sobre el UID crudo de taskHistory/
@@ -960,7 +981,8 @@ open class FirestoreRepository(
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteMember: anonymizeMemberTaskHistory failed for member=$memberId in household=$householdId", e)
             // No crítico: ver KDoc de deleteMember.
         }
         try {
@@ -969,7 +991,8 @@ open class FirestoreRepository(
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "deleteMember: anonymizeMemberRedemptions failed for member=$memberId in household=$householdId", e)
             // No crítico: ver KDoc de deleteMember.
         }
         return result
@@ -987,7 +1010,8 @@ open class FirestoreRepository(
             getTasks(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "purgeMemberFromTasks: getTasks failed for household=$householdId", e)
             return
         }
         for (task in tasks) {
@@ -999,13 +1023,16 @@ open class FirestoreRepository(
                     )
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.e("FirestoreRepository", "purgeMemberFromTasks: updateAssignmentRotation failed for task=${task.id} member=$memberId in household=$householdId", e)
+                }
             }
             val assignments = try {
                 getAssignments(householdId, task.id)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("FirestoreRepository", "purgeMemberFromTasks: getAssignments failed for task=${task.id} in household=$householdId", e)
                 emptyList()
             }
             val toDelete = assignments.filter { it.memberId == memberId && it.status == "assigned" }
@@ -1124,6 +1151,7 @@ open class FirestoreRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLog.e("FirestoreRepository", "donatePoints failed for household=$householdId from=$fromMemberId to=$toMemberId amount=$amount", e)
             // Mismo criterio de clasificación que antes (ver KDoc de
             // [MemberRepository.DonateErrorReason]): un fallo AMBIGUO (timeout,
             // IOException) no distingue si el servidor completó la transacción,
@@ -1279,6 +1307,7 @@ open class FirestoreRepository(
                     )
                 )
             } catch (e: CloudFunctionException) {
+                AppLog.w("FirestoreRepository", "completeTask: completeRecurringTask failed for household=$householdId task=$taskId member=$memberId (status=${e.status})", e)
                 throw mapToTaskCompletionConflict(e)
             }
             return TaskCompletionResult(result.completedAt, result.pointsAwarded, result.onTime)
@@ -1473,6 +1502,7 @@ open class FirestoreRepository(
                     CompleteAssignmentRequest(householdId = householdId, taskId = taskId, assignmentId = assignmentId)
                 )
             } catch (e: CloudFunctionException) {
+                AppLog.w("FirestoreRepository", "completeAssignment: completeAssignment failed for household=$householdId task=$taskId assignment=$assignmentId (status=${e.status})", e)
                 throw mapToAssignmentCompletionConflict(e)
             }
             return assignment.copy(
@@ -1672,6 +1702,7 @@ open class FirestoreRepository(
                 pointsSpent = result.pointsSpent
             )
         } catch (e: CloudFunctionException) {
+            AppLog.w("FirestoreRepository", "redeemReward: redeemReward failed for household=$householdId reward=$rewardId member=$memberId (status=${e.status})", e)
             // `failed-precondition` = saldo insuficiente (única condición que
             // lanza ese status en `redeemReward.ts`) — se traduce por TIPO,
             // no por mensaje, para que MemberScreenModel siga distinguiéndolo

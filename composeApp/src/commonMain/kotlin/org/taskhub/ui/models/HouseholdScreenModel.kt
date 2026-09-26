@@ -24,6 +24,7 @@ import org.taskhub.network.models.MemberResponse
 import org.taskhub.network.models.MessageResponse
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SettingsStore
+import org.taskhub.platform.AppLog
 import org.taskhub.platform.HapticKind
 import org.taskhub.ui.components.hapticsEnabled
 import org.taskhub.platform.logAnalyticsEvent
@@ -113,6 +114,7 @@ class HouseholdScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("HouseholdScreenModel", "createHousehold failed", e)
                 _uiState.value = HouseholdUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "household_error_creating")
                 )
@@ -152,6 +154,7 @@ class HouseholdScreenModel(
                 // Por tipo, no por e.message (fijo en español desde el repo,
                 // nunca null) — panel de revisión 2026-09-10, Experto 2,
                 // IMPORTANTE.
+                AppLog.w("HouseholdScreenModel", "joinHousehold: invalid invite code", e)
                 _uiState.value = HouseholdUiState.Error(s("household_error_invalid_invite_code"))
                 buzz(HapticKind.ERROR)
             } catch (e: Exception) {
@@ -159,6 +162,7 @@ class HouseholdScreenModel(
                 // inválido" incluso para un fallo de RED (sin conexión/5xx),
                 // mostrando un mensaje de validación equivocado ante un
                 // problema que nada tiene que ver con el código en sí.
+                AppLog.e("HouseholdScreenModel", "joinHousehold failed", e)
                 _uiState.value = HouseholdUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "household_error_joining")
                 )
@@ -181,6 +185,7 @@ class HouseholdScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("HouseholdScreenModel", "loadHousehold failed", e)
                 _uiState.value = HouseholdUiState.Error(
                     message = e.toUserMessage(settingsStore.getLanguage(), "household_error_loading"),
                     removable = e.errorCategory() == ErrorCategory.GONE_OR_FORBIDDEN
@@ -218,9 +223,11 @@ class HouseholdScreenModel(
                 // Por tipo, no por e.message (fijo en español desde el repo e
                 // incluye el ID interno del hogar) — mismo motivo que
                 // AccountDeletionCascadeException en DeleteAccountSection.kt.
+                AppLog.w("HouseholdScreenModel", "deleteHousehold: cascade incomplete", e)
                 buzz(HapticKind.ERROR)
                 onError(s("household_error_deleting_cascade"))
             } catch (e: Exception) {
+                AppLog.e("HouseholdScreenModel", "deleteHousehold failed", e)
                 buzz(HapticKind.ERROR)
                 onError(e.toUserMessage(settingsStore.getLanguage(), "household_error_deleting"))
             }
@@ -243,6 +250,7 @@ class HouseholdScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("HouseholdScreenModel", "leaveHousehold failed", e)
                 buzz(HapticKind.ERROR)
                 onError(e.toUserMessage(settingsStore.getLanguage(), "household_error_leaving"))
             }
@@ -306,10 +314,13 @@ class HouseholdScreenModel(
                     repo.purgeOldMessages(householdId, messages)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("HouseholdScreenModel", "loadMessages: purgeOldMessages failed", e)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("HouseholdScreenModel", "loadMessages failed", e)
                 _messagesUiState.value = MessagesUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "messages_error_loading")
                 )
@@ -348,6 +359,7 @@ class HouseholdScreenModel(
                 // empezado ya a escribir un mensaje NUEVO mientras este envío
                 // seguía en vuelo — si no, este catch pisaba en silencio lo que
                 // ya había tecleado con el texto del intento fallido.
+                AppLog.e("HouseholdScreenModel", "sendMessage failed", e)
                 if (_newMessageText.value.isEmpty()) {
                     _newMessageText.value = text
                 }

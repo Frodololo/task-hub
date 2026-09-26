@@ -24,6 +24,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
+import org.taskhub.platform.AppLog
 import kotlin.concurrent.Volatile
 import kotlin.random.Random
 
@@ -178,6 +179,7 @@ class FirestoreClient(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.w("FirestoreClient", "ensureAuth: refreshFirebaseToken failed (transient=${e.isTransientReadFailure()})", e)
                 // OJO: distinguir fallo TRANSITORIO (sin red, timeout, 5xx de
                 // Identity Toolkit) de un refresh token realmente inválido/
                 // revocado (4xx, p.ej. TOKEN_EXPIRED/INVALID_REFRESH_TOKEN).
@@ -223,6 +225,7 @@ class FirestoreClient(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLog.e("FirestoreClient", "refreshFirebaseToken: POST securetoken failed", e)
             throw redactApiKey(e)
         }
 
@@ -328,6 +331,7 @@ class FirestoreClient(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLog.e("FirestoreClient", "deleteFirebaseAccount: POST accounts:delete failed", e)
             throw redactApiKey(e)
         }
     }
@@ -461,6 +465,7 @@ internal suspend fun <T> retryTransientReadFailure(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLog.w("FirestoreClient", "retryTransientReadFailure: attempt ${attempt + 1}/$maxAttempts failed", e)
             attempt++
             if (attempt >= maxAttempts || !e.isTransientReadFailure()) throw e
             val jitterRange = (delayMillis / 4).coerceAtLeast(1)
@@ -514,7 +519,8 @@ internal suspend inline fun <T> orDefault(default: T, block: () -> T): T {
         block()
     } catch (e: CancellationException) {
         throw e
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        AppLog.w("FirestoreClient", "orDefault: block failed, returning default value", e)
         default
     }
 }

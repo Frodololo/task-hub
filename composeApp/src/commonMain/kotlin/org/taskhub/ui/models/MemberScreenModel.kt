@@ -22,6 +22,7 @@ import org.taskhub.network.models.MemberResponse
 import org.taskhub.network.models.RewardResponse
 import org.taskhub.network.models.RewardRedemption
 import org.taskhub.network.toUserMessageKey
+import org.taskhub.platform.AppLog
 import org.taskhub.platform.HapticKind
 import org.taskhub.ui.components.hapticsEnabled
 import org.taskhub.platform.vibrate
@@ -135,6 +136,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "loadMembers failed for household $householdId", e)
                 _uiState.value = MemberUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "member_error_loading")
                 )
@@ -157,6 +159,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "addMember failed for household $householdId", e)
                 _uiState.value = MemberUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "member_error_adding")
                 )
@@ -179,6 +182,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "removeMember failed for member $memberId", e)
                 _memberActionState.value = MemberActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "member_error_removing")
                 )
@@ -204,6 +208,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "updateMemberRole failed for member $memberId", e)
                 _memberActionState.value = MemberActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "member_error_role")
                 )
@@ -241,6 +246,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "loadRewards failed for household $householdId", e)
                 _rewardState.value = RewardUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "reward_error_loading")
                 )
@@ -269,6 +275,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "createReward failed for household $householdId", e)
                 _rewardActionState.value = RewardActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "reward_error_creating")
                 )
@@ -287,6 +294,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "deleteReward failed for reward $rewardId", e)
                 _rewardActionState.value = RewardActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "reward_error_deleting")
                 )
@@ -322,9 +330,11 @@ class MemberScreenModel(
                 // el repo y nunca es null, así que el fallback de i18n de
                 // abajo nunca se disparaba) — panel de revisión 2026-09-10,
                 // Experto 2, IMPORTANTE.
+                AppLog.w("MemberScreenModel", "redeemReward: insufficient balance for member $memberId", e)
                 _rewardActionState.value = RewardActionState.Error(s("member_reward_insufficient"))
                 buzz(HapticKind.ERROR)
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "redeemReward failed for reward $rewardId", e)
                 _rewardActionState.value = RewardActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "reward_error_redeeming")
                 )
@@ -386,6 +396,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "appreciateMember failed from $fromMemberId to $toMemberId", e)
                 _appreciateActionState.value = AppreciateActionState.Error(e.toUserMessageKey("transfer_error_failed"))
                 buzz(HapticKind.ERROR)
             }
@@ -421,6 +432,7 @@ class MemberScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberScreenModel", "donatePoints failed from $fromMemberId to $toMemberId", e)
                 _donateActionState.value = DonateActionState.Error(e.toUserMessageKey("transfer_error_failed"))
                 buzz(HapticKind.ERROR)
             }

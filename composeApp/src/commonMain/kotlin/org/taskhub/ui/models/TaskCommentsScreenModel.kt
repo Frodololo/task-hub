@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.models.CommentResponse
+import org.taskhub.platform.AppLog
 import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.i18n.toUserMessage
@@ -91,6 +92,7 @@ class TaskCommentsScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskCommentsScreenModel", "loadComments failed for task $taskId", e)
                 _commentsState.value = CommentsUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_comment_error_loading")
                 )
@@ -131,6 +133,7 @@ class TaskCommentsScreenModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("TaskCommentsScreenModel", "addComment failed for task $taskId", e)
                 _newCommentText.value = text
                 _sendCommentError.value = e.toUserMessage(settingsStore.getLanguage(), "task_comment_error_adding")
             }
@@ -152,7 +155,8 @@ class TaskCommentsScreenModel(
             member?.displayName?.takeIf { it.isNotBlank() } ?: s("task_comment_default_author")
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.w("TaskCommentsScreenModel", "resolveCurrentMemberName: getMembers failed", e)
             s("profile_default_name")
         }
     }

@@ -12,6 +12,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import org.taskhub.network.models.MemberResponse
 import org.taskhub.network.models.UserProfile
+import org.taskhub.platform.AppLog
 import org.taskhub.storage.TaskCache
 
 /**
@@ -165,9 +166,11 @@ class MemberRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: FirestoreException) {
+            AppLog.w("MemberRepository", "getMembers failed for householdId=$householdId, falling back to cache", e)
             if (e.statusCode == 404 || e.statusCode == 403) throw e
             taskCache.getCachedMembers(householdId) ?: throw e
         } catch (e: Exception) {
+            AppLog.e("MemberRepository", "getMembers failed for householdId=$householdId, falling back to cache", e)
             taskCache.getCachedMembers(householdId) ?: throw e
         }
     }
@@ -188,7 +191,8 @@ class MemberRepository(
                 getMembers(householdId).firstOrNull { it.userId == userId }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.e("MemberRepository", "createMember dedup check failed for householdId=$householdId, userId=$userId", e)
                 null
             }
             if (existing != null) return existing
@@ -252,8 +256,9 @@ class MemberRepository(
                 upsertUserProfile(userId = userId, displayName = displayName, avatarUrl = avatarUrl)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // No crítico: el perfil se puede reclamar más tarde.
+                AppLog.w("MemberRepository", "createMember: upsertUserProfile failed for userId=$userId", e)
             }
         }
 
@@ -303,7 +308,8 @@ class MemberRepository(
             getMembers(householdId)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("MemberRepository", "resolveCurrentMemberUncached: getMembers failed for householdId=$householdId", e)
             emptyList()
         }
 
@@ -329,7 +335,8 @@ class MemberRepository(
             ).id
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("MemberRepository", "resolveCurrentMemberUncached: fallback createMember failed for householdId=$householdId, localId=$localId", e)
             localId ?: ""
         }
     }
@@ -561,6 +568,7 @@ class MemberRepository(
             val current: FirestoreDocumentResponse = try {
                 client.getWithRetry(docUrl) { withAuth() }.body()
             } catch (e: FirestoreException) {
+                AppLog.w("MemberRepository", "addMemberPoints: fetch failed for householdId=$householdId, memberId=$memberId", e)
                 if (e.statusCode == 404) return // miembro inexistente: no-op, como antes
                 throw e
             }
@@ -581,12 +589,14 @@ class MemberRepository(
                 taskCache.clearMembers(householdId)
                 return
             } catch (e: FirestoreException) {
+                AppLog.w("MemberRepository", "addMemberPoints: optimistic write conflict for householdId=$householdId, memberId=$memberId, attempt=$attempt", e)
                 val isConflict = e.code == "FAILED_PRECONDITION" || e.code == "ABORTED"
                 if (!isConflict || attempt == OPTIMISTIC_WRITE_MAX_RETRIES - 1) throw e
                 // Otro escritor ganó la carrera: reintentar con el valor fresco.
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("MemberRepository", "addMemberPoints: patch failed for householdId=$householdId, memberId=$memberId", e)
                 // Timeout/IOException (AMBIGUOUS): el servidor pudo haber completado
                 // el PATCH pese al fallo visto por el cliente — invalidar la caché
                 // para que la siguiente lectura muestre el saldo real en vez de un
@@ -709,6 +719,7 @@ class MemberRepository(
             val current: FirestoreDocumentResponse = try {
                 client.getWithRetry(docUrl) { withAuth() }.body()
             } catch (e: FirestoreException) {
+                AppLog.w("MemberRepository", "appreciateMember: fetch failed for householdId=$householdId, fromMemberId=$fromMemberId", e)
                 if (e.statusCode == 404) return AppreciateResult.Error(AppreciateErrorReason.MEMBER_NOT_FOUND)
                 throw e
             }
@@ -746,6 +757,7 @@ class MemberRepository(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    AppLog.e("MemberRepository", "appreciateMember: addMemberPoints failed crediting toMemberId=$toMemberId in householdId=$householdId", e)
                     // Ver KDoc de [AppreciateErrorReason.UNCERTAIN]: un timeout aquí no
                     // permite saber si el receptor ya fue acreditado (panel v15, mismo
                     // patrón que el fix de [donatePoints] para AMBIGUOUS).
@@ -759,6 +771,7 @@ class MemberRepository(
                     receptorNewTotal = toMember.totalPoints + amount
                 )
             } catch (e: FirestoreException) {
+                AppLog.w("MemberRepository", "appreciateMember: optimistic write conflict for householdId=$householdId, fromMemberId=$fromMemberId, attempt=$attempt", e)
                 val isConflict = e.code == "FAILED_PRECONDITION" || e.code == "ABORTED"
                 if (!isConflict || attempt == OPTIMISTIC_WRITE_MAX_RETRIES - 1) throw e
                 // Otro escritor ganó la carrera: reintentar con el presupuesto fresco.
@@ -824,6 +837,7 @@ class MemberRepository(
             val current: FirestoreDocumentResponse? = try {
                 client.getWithRetry(docUrl) { withAuth() }.body()
             } catch (e: FirestoreException) {
+                AppLog.w("MemberRepository", "addMemberAchievement: fetch failed for householdId=$householdId, memberId=$memberId", e)
                 if (e.statusCode == 404) null else throw e
             }
             val existing = current?.fields?.get("unlocked")?.arrayValue?.values
@@ -850,6 +864,7 @@ class MemberRepository(
                 }
                 return
             } catch (e: FirestoreException) {
+                AppLog.w("MemberRepository", "addMemberAchievement: optimistic write conflict for householdId=$householdId, memberId=$memberId, attempt=$attempt", e)
                 val isConflict = e.code == "FAILED_PRECONDITION" || e.code == "ABORTED"
                 if (!isConflict || attempt == OPTIMISTIC_WRITE_MAX_RETRIES - 1) throw e
             }

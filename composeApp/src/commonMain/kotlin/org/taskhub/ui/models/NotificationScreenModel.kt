@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.MAX_POLLED_NOTIFICATIONS
 import org.taskhub.network.models.NotificationResponse
+import org.taskhub.platform.AppLog
 import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.i18n.toUserMessage
 
@@ -106,10 +107,13 @@ class NotificationScreenModel(
                     repo.purgeOldNotifications(householdId, all)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    AppLog.w("NotificationScreenModel", "loadNotifications: purgeOldNotifications failed", e)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.e("NotificationScreenModel", "loadNotifications failed", e)
                 _uiState.value = NotificationUiState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "notification_error_loading")
                 )
@@ -147,7 +151,8 @@ class NotificationScreenModel(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("NotificationScreenModel", "markAsRead failed for notification $notificationId", e)
                 // Non-critical, ignore
             }
         }
@@ -168,7 +173,8 @@ class NotificationScreenModel(
                 _unreadCount.value = unread
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                AppLog.w("NotificationScreenModel", "refreshUnreadCount failed for household $householdId", e)
                 // Ignore polling errors
             }
         }

@@ -44,6 +44,7 @@ fun QrCodeImage(
             // mostrar [onError] en vez de tumbar la pantalla.
             QrEncoder.encode(text)
         } catch (e: Exception) {
+            AppLog.w("QrCodeImage", "encode failed for text of length ${text.length}", e)
             null
         }
     }
