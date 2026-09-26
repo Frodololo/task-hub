@@ -28,7 +28,9 @@ import org.taskhub.platform.AndroidSchedulerHolder
 import org.taskhub.platform.AndroidContextHolder
 import org.taskhub.platform.ConsentManager
 import org.taskhub.platform.DebugFlags
+import org.taskhub.platform.setAnalyticsCollectionEnabled
 import org.taskhub.storage.HouseholdStore
+import org.taskhub.storage.SettingsStore
 import org.taskhub.BuildConfig
 
 /**
@@ -162,6 +164,10 @@ class MainActivity : ComponentActivity() {
 
         // Hold a static reference to the app context for platform helpers
         AndroidContextHolder.context = applicationContext
+
+        // Aplica la preferencia de opt-out de Analytics guardada (RGPD, ver
+        // SettingsSheet) — necesita AndroidContextHolder.context ya asignado.
+        setAnalyticsCollectionEnabled(!SettingsStore(Settings()).isAnalyticsOptOut())
 
         // Hold a reference to the current Activity (para mostrar el interstitial de AdMob)
         AndroidContextHolder.activity = this

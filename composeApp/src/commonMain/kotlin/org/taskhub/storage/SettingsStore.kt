@@ -100,6 +100,15 @@ class SettingsStore(
     fun setVibrationEnabled(enabled: Boolean) =
         settings.putBoolean(KEY_VIBRATION_ENABLED, enabled)
 
+    // ── Analytics (RGPD) ─────────────────────────────────
+
+    /** Si el usuario ha desactivado la recolección de Firebase Analytics (desactivado por defecto, opt-out). */
+    fun isAnalyticsOptOut(): Boolean =
+        settings.getBoolean(KEY_ANALYTICS_OPT_OUT, false)
+
+    fun setAnalyticsOptOut(optOut: Boolean) =
+        settings.putBoolean(KEY_ANALYTICS_OPT_OUT, optOut)
+
     // ── Modo simple (delight, panel 2026-09-18) ──────────
     //
     // Interruptor maestro + 3 de categoría para desactivar el "delight"
@@ -359,6 +368,7 @@ class SettingsStore(
         private const val KEY_WIDGET_THEME = "taskhub_widget_theme"
         private const val KEY_SOUND_ENABLED = "taskhub_sound_enabled"
         private const val KEY_VIBRATION_ENABLED = "taskhub_vibration_enabled"
+        private const val KEY_ANALYTICS_OPT_OUT = "taskhub_analytics_opt_out"
         private const val KEY_SIMPLE_MODE = "simple_mode"
         private const val KEY_FX_ANIMATIONS = "fx_animations"
         private const val KEY_FX_EFFECTS = "fx_effects"

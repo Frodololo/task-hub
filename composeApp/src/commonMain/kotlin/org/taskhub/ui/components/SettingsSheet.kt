@@ -37,6 +37,7 @@ import org.taskhub.platform.hasCalendarSupport
 import org.taskhub.platform.hasHomeScreenWidget
 import org.taskhub.platform.hasNotificationSupport
 import org.taskhub.platform.saveWidgetThemeToCache
+import org.taskhub.platform.setAnalyticsCollectionEnabled
 
 /** Misma URL publicada en la ficha de Play (ver docs/play-store-listing.md). */
 private const val PRIVACY_POLICY_URL = "https://libertobaltasar.github.io/task-hub/privacy.html"
@@ -686,6 +687,41 @@ fun SettingsSheet(
                 Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(s("settings_privacy_policy"))
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── Analytics opt-out (RGPD) ──────────────────────
+            var analyticsOptOut by remember { mutableStateOf(settingsStore.isAnalyticsOptOut()) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = s("settings_analytics_opt_out"),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = s("settings_analytics_opt_out_desc"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = analyticsOptOut,
+                    onCheckedChange = { optOut ->
+                        analyticsOptOut = optOut
+                        settingsStore.setAnalyticsOptOut(optOut)
+                        setAnalyticsCollectionEnabled(!optOut)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
             }
 
             Spacer(Modifier.height(16.dp))

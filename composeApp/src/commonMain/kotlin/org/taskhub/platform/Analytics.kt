@@ -22,3 +22,10 @@ package org.taskhub.platform
  *   - `task_completed`      → tarea marcada como hecha (engagement/racha)
  */
 expect fun logAnalyticsEvent(eventName: String, params: Map<String, String> = emptyMap())
+
+/**
+ * Activa/desactiva la recolección de Firebase Analytics (RGPD: opt-out desde
+ * Ajustes, ver [org.taskhub.storage.SettingsStore.isAnalyticsOptOut]). No-op
+ * en plataformas sin Analytics integrado (iOS/JVM/wasmJs).
+ */
+expect fun setAnalyticsCollectionEnabled(enabled: Boolean)

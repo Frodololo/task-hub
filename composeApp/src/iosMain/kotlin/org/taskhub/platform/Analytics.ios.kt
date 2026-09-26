@@ -10,3 +10,8 @@ package org.taskhub.platform
 actual fun logAnalyticsEvent(eventName: String, params: Map<String, String>) {
     // TODO: integrar Firebase Analytics para iOS
 }
+
+/** No-op en iOS: Analytics aún no está integrado en este target (ver KDoc de arriba). */
+actual fun setAnalyticsCollectionEnabled(enabled: Boolean) {
+    // TODO: integrar Firebase Analytics para iOS
+}

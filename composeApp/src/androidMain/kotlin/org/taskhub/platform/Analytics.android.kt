@@ -21,3 +21,9 @@ actual fun logAnalyticsEvent(eventName: String, params: Map<String, String>) {
     }
     firebaseAnalytics.logEvent(eventName, bundle)
 }
+
+/** Implementación Android de [setAnalyticsCollectionEnabled] vía Firebase Analytics. */
+actual fun setAnalyticsCollectionEnabled(enabled: Boolean) {
+    val context = AndroidContextHolder.context ?: return
+    FirebaseAnalytics.getInstance(context).setAnalyticsCollectionEnabled(enabled)
+}

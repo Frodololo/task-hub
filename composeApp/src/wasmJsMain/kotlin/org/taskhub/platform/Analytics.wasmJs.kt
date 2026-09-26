@@ -10,3 +10,8 @@ package org.taskhub.platform
 actual fun logAnalyticsEvent(eventName: String, params: Map<String, String>) {
     // No-op
 }
+
+/** No-op en web: no hay SDK de Firebase Analytics integrado en el build estático todavía. */
+actual fun setAnalyticsCollectionEnabled(enabled: Boolean) {
+    // No-op
+}

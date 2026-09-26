@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
+import org.taskhub.platform.GoogleSignInResult
 import org.taskhub.platform.GoogleSignInResultHolder
 import org.taskhub.platform.cancelGoogleSignIn
 import org.taskhub.platform.consumeLastSignInFailureReason
@@ -125,16 +126,16 @@ class GoogleAuthManager(
     init {
         // Observa el resultado del flujo nativo de Google Sign-In
         scope.launch {
-            GoogleSignInResultHolder.result.collect { token ->
-                when {
-                    // null = en curso (aún no resuelto); no hacer nada.
-                    token == null -> Unit
-                    // "" = cancelado / sin token → volver a SignedOut para no
+            GoogleSignInResultHolder.result.collect { result ->
+                when (result) {
+                    // En curso (aún no resuelto); no hacer nada.
+                    is GoogleSignInResult.Loading -> Unit
+                    // Cancelado / sin token → volver a SignedOut para no
                     // quedarse colgado en "Conectando con Google...", SALVO
                     // que la plataforma reporte un motivo específico de fallo
                     // (hoy solo wasmJs — ver `Platform.wasmJs.kt`/`index.html`):
                     // el error actual en web era silencioso (D4/item 4).
-                    token.isEmpty() -> {
+                    is GoogleSignInResult.Cancelled -> {
                         signInTimeoutJob?.cancel()
                         GoogleSignInResultHolder.reset()
                         _state.value = when (consumeLastSignInFailureReason()) {
@@ -153,9 +154,9 @@ class GoogleAuthManager(
                             else -> GoogleAuthState.SignedOut
                         }
                     }
-                    else -> {
+                    is GoogleSignInResult.Success -> {
                         signInTimeoutJob?.cancel()
-                        handleGoogleToken(token)
+                        handleGoogleToken(result.token)
                         GoogleSignInResultHolder.reset()
                     }
                 }

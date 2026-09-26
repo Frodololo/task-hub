@@ -10,3 +10,8 @@ package org.taskhub.platform
 actual fun logAnalyticsEvent(eventName: String, params: Map<String, String>) {
     // No-op
 }
+
+/** No-op en JVM (desktop): Analytics no está integrado en este target. */
+actual fun setAnalyticsCollectionEnabled(enabled: Boolean) {
+    // No-op
+}

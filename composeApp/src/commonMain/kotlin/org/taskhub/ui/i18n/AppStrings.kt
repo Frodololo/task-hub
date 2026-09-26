@@ -84,6 +84,8 @@ object AppStrings {
 
             // Privacidad y datos
             "settings_privacy_data_title" to "Privacidad y datos",
+            "settings_analytics_opt_out" to "Desactivar análisis de uso",
+            "settings_analytics_opt_out_desc" to "No enviar estadísticas anónimas de uso a Firebase Analytics",
 
             // Eliminar cuenta (RGPD)
             "settings_delete_account_button" to "Eliminar cuenta",
@@ -803,6 +805,8 @@ object AppStrings {
 
             // Privacy and data
             "settings_privacy_data_title" to "Privacy and data",
+            "settings_analytics_opt_out" to "Opt out of usage analytics",
+            "settings_analytics_opt_out_desc" to "Don't send anonymous usage statistics to Firebase Analytics",
 
             // Delete account (GDPR)
             "settings_delete_account_button" to "Delete account",

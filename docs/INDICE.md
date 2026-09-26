@@ -126,6 +126,13 @@ entender *por qué* el código quedó como quedó en ciertos puntos.
   — ronda de correcciones aprobadas y el cierre del flujo de notificaciones
   end-to-end (asignación de tarea / mensaje nuevo → notificación del
   sistema).
+- **[refactor-limpieza-2026-09-26.md](refactor-limpieza-2026-09-26.md)** —
+  opt-out de Firebase Analytics en Ajustes (RGPD) y migración de
+  `GoogleSignInResultHolder` a un `sealed class GoogleSignInResult`
+  (Loading/Success/Cancelled) por el lado del consumidor
+  (`GoogleAuthManager`), manteniendo `setResult(String?)` sin cambios en los
+  8 call-sites de plataforma para no arriesgar el build de iOS sin poder
+  verificarlo (sin Xcode disponible).
 - **[admob-ump-tcf-2026-09-26.md](admob-ump-tcf-2026-09-26.md)** —
   implementación de un CMP compatible con TCF v2 (Google User Messaging
   Platform) para evitar el riesgo de suspensión de la cuenta de AdMob en
