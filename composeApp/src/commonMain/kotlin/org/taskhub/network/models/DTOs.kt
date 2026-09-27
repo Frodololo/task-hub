@@ -9,6 +9,7 @@ package org.taskhub.network.models
 import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.taskhub.platform.AppLog
 
 /**
  * Tipo de espacio (empaquetado/copy, no cambia la lógica de negocio): decide
@@ -38,10 +39,17 @@ val SpaceType.firestoreValue: String
 
 /** Inverso de [SpaceType.firestoreValue]. Desconocido/null → [SpaceType.HOME] (hogares legacy). */
 fun spaceTypeFromFirestoreValue(value: String?): SpaceType = when (value) {
+    null, "home" -> SpaceType.HOME
     "flat" -> SpaceType.FLAT_SHARE
     "study" -> SpaceType.STUDY_GROUP
     "club" -> SpaceType.CLUB
-    else -> SpaceType.HOME
+    else -> {
+        // null/ausente es el caso legítimo de hogares legacy (sin log); un string
+        // no reconocido aquí sí es anómalo (typo manual, migración futura de
+        // nombres, o REST directo) y conviene dejar rastro para depurarlo.
+        AppLog.w("SpaceType", "spaceTypeFromFirestoreValue: valor no reconocido \"$value\", usando HOME")
+        SpaceType.HOME
+    }
 }
 
 // ── Request DTOs ──────────────────────────────────────────

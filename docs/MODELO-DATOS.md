@@ -122,6 +122,7 @@ Campos (`HouseholdResponse`):
 | `isPersonal` | boolean | `true` = espacio personal auto-creado (ID determinista `personal_{uid}`), no un hogar compartido real. |
 | `ownerId` | string | UID de quien creó el hogar. Siempre "de confianza" (equivalente a admin) al margen de su rol de miembro — es la base de `isOwner(hid)` en las reglas. |
 | `timezone` | string? | TZ IANA (p. ej. `"Europe/Madrid"`), D1 (2026-09-24). Por defecto la TZ del dispositivo de quien crea el hogar (`deviceTimezone` en `HouseholdRepository.createHousehold`). `null`/ausente en hogares creados antes de esta migración. La leen las Cloud Functions de `functions/src/` (`auth.loadHouseholdTimezone`) para calcular fin de día de vencimiento/rachas, con fallback a `Europe/Madrid` (`DEFAULT_TZ`) si no está poblado. |
+| `spaceType` | string enum (`SpaceType`) | Tipo de espacio (casa/piso/estudio/club, 2026-09-27) — solo copy/emoji, no cambia lógica de negocio ni permisos. Valores `"home"/"flat"/"study"/"club"` (`SpaceType.firestoreValue`). `null`/ausente o valor no reconocido → `HOME` (`spaceTypeFromFirestoreValue`, `network/models/DTOs.kt`) — cubre hogares creados antes de este campo y el espacio Personal, que nunca lo escribe. |
 
 ### `households/{hid}/members/{mid}` — miembro de un hogar
 

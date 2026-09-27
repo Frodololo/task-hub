@@ -17,9 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -131,7 +134,19 @@ class CreateHouseholdScreen : Screen {
                                 FilterChip(
                                     selected = selectedType == type,
                                     onClick = { selectedType = type },
-                                    label = { Text(s(labelKey)) },
+                                    label = {
+                                        Text(
+                                            text = s(labelKey),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            // Oculta el emoji para TalkBack/VoiceOver (p.ej. "balón de
+                                            // fútbol" antes de "Grupo o club" suena desconectado del
+                                            // texto) dejando solo el nombre del tipo como nombre accesible.
+                                            modifier = Modifier.clearAndSetSemantics {
+                                                contentDescription = s(labelKey).removePrefix(type.emoji).trim()
+                                            }
+                                        )
+                                    },
                                     modifier = Modifier.weight(1f),
                                     leadingIcon = filterChipCheckIcon(selectedType == type)
                                 )
