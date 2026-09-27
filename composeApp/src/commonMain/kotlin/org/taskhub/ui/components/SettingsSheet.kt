@@ -32,12 +32,12 @@ import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.GoogleAuthManager
 import org.taskhub.ui.models.GoogleAuthState
+import org.taskhub.ui.models.ProfileScreenModel
 import org.taskhub.ui.theme.TaskHubThemeType
 import org.taskhub.platform.hasCalendarSupport
 import org.taskhub.platform.hasHomeScreenWidget
 import org.taskhub.platform.hasNotificationSupport
 import org.taskhub.platform.saveWidgetThemeToCache
-import org.taskhub.platform.setAnalyticsCollectionEnabled
 
 /** Misma URL publicada en la ficha de Play (ver docs/play-store-listing.md). */
 private const val PRIVACY_POLICY_URL = "https://libertobaltasar.github.io/task-hub/privacy.html"
@@ -80,6 +80,7 @@ fun SettingsSheet(
     val settingsStore = koinInject<SettingsStore>()
     val appSettings = LocalAppSettings.current
     val authManager = koinInject<GoogleAuthManager>()
+    val profileScreenModel = koinInject<ProfileScreenModel>()
     val authState by authManager.state.collectAsState()
     val uriHandler = LocalUriHandler.current
     val navigator = LocalNavigator.currentOrThrow
@@ -714,8 +715,7 @@ fun SettingsSheet(
                     checked = analyticsOptOut,
                     onCheckedChange = { optOut ->
                         analyticsOptOut = optOut
-                        settingsStore.setAnalyticsOptOut(optOut)
-                        setAnalyticsCollectionEnabled(!optOut)
+                        profileScreenModel.setAnalyticsOptOut(optOut)
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.primary,

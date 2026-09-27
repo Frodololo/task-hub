@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.bestEffort
 import org.taskhub.platform.GoogleSignInResult
 import org.taskhub.platform.GoogleSignInResultHolder
 import org.taskhub.platform.cancelGoogleSignIn
@@ -276,24 +277,16 @@ class GoogleAuthManager(
         householdStore.clearAll()
         _state.value = GoogleAuthState.SignedOut
         scope.launch {
-            try {
+            // No crítico: la caché se autocorrige en la siguiente resolución.
+            bestEffort(Unit, "GoogleAuthManager") {
                 repo.invalidateAllCurrentMembers()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLog.w("GoogleAuthManager", "signOut: invalidateAllCurrentMembers failed", e)
-                // No crítico: la caché se autocorrige en la siguiente resolución.
             }
         }
         if (uidBeingSignedOut != null) {
             scope.launch {
-                try {
+                // No crítico: el token se sobrescribirá en el próximo login de esa cuenta.
+                bestEffort(Unit, "GoogleAuthManager") {
                     repo.clearFcmToken(uidBeingSignedOut)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("GoogleAuthManager", "signOut: clearFcmToken failed", e)
-                    // No crítico: el token se sobrescribirá en el próximo login de esa cuenta.
                 }
             }
         }
@@ -374,26 +367,18 @@ class GoogleAuthManager(
             return Result.failure(AccountDeletionCascadeException())
         }
         if (myId != null) {
-            try {
+            // No crítico: el perfil global huérfano no es un dato con
+            // identidad reclamable sin la cuenta que acabamos de borrar.
+            bestEffort(Unit, "GoogleAuthManager") {
                 repo.deleteUserProfile(myId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLog.w("GoogleAuthManager", "deleteAccount: deleteUserProfile failed", e)
-                // No crítico: el perfil global huérfano no es un dato con
-                // identidad reclamable sin la cuenta que acabamos de borrar.
             }
         }
         return try {
             repo.deleteFirebaseAccount()
             if (settingsStore.hasGoogleLinked()) {
-                try {
+                // No crítico: el access token en sí caduca solo en ~1h.
+                bestEffort(Unit, "GoogleAuthManager") {
                     revokeGoogleCalendarAccess()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("GoogleAuthManager", "deleteAccount: revokeGoogleCalendarAccess failed", e)
-                    // No crítico: el access token en sí caduca solo en ~1h.
                 }
             }
             householdStore.clearAll()

@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.models.UserProfile
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.setAnalyticsCollectionEnabled
 import org.taskhub.platform.HapticKind
 import org.taskhub.ui.components.hapticsEnabled
 import org.taskhub.platform.vibrate
@@ -170,6 +171,12 @@ class ProfileScreenModel(
 
     fun clearSaveState() {
         _saveState.value = ProfileSaveState.Idle
+    }
+
+    /** Aplica el opt-out de analytics (RGPD): persiste la preferencia y lo propaga al SDK. */
+    fun setAnalyticsOptOut(optOut: Boolean) {
+        settingsStore.setAnalyticsOptOut(optOut)
+        setAnalyticsCollectionEnabled(!optOut)
     }
 }
 

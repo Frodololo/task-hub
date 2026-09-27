@@ -28,6 +28,7 @@ import org.taskhub.network.models.AssignmentSlot
 import org.taskhub.network.models.Subtask
 import org.taskhub.platform.NotificationScheduler
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.bestEffort
 import org.taskhub.platform.AdController
 import org.taskhub.platform.HapticKind
 import org.taskhub.ui.components.hapticsEnabled
@@ -478,21 +479,13 @@ class TaskScreenModel(
      * caller (ver [createTask]), no uno de este rollback.
      */
     private suspend fun rollbackUnassignedTask(householdId: String, taskId: String) {
-        try {
+        // Best-effort: intentamos borrar la tarea igualmente aunque falle esto.
+        bestEffort(Unit, "TaskScreenModel") {
             repo.deleteAssignments(householdId, taskId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            AppLog.w("TaskScreenModel", "rollbackUnassignedTask: deleteAssignments failed for task $taskId", e)
-            // Best-effort: intentamos borrar la tarea igualmente.
         }
-        try {
+        // No crítico: ver KDoc de la función (limitación conocida).
+        bestEffort(Unit, "TaskScreenModel") {
             repo.deleteTask(householdId, taskId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            AppLog.w("TaskScreenModel", "rollbackUnassignedTask: deleteTask failed for task $taskId", e)
-            // No crítico: ver KDoc de la función (limitación conocida).
         }
     }
 
@@ -625,12 +618,8 @@ class TaskScreenModel(
                 // es un efecto secundario no crítico, nunca debe marcar la acción
                 // como error (eso invitaría a reintentar completeTask() y duplicar
                 // los puntos ya otorgados).
-                try {
+                bestEffort(Unit, "TaskScreenModel") {
                     notificationScheduler.cancelReminder(taskId)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "completeTask: cancelReminder failed for task $taskId", e)
                 }
 
                 // Tarea hecha → borrar el evento de Calendar vinculado, si lo
@@ -640,7 +629,7 @@ class TaskScreenModel(
                 // HouseholdScreen/PersonalSpaceScreen (`CalendarSyncManager.
                 // reconcile()`) para que apareciera en Calendar (panel v4,
                 // Experto 2 hallazgo #3 PROPUESTA aceptada).
-                try {
+                bestEffort(Unit, "TaskScreenModel") {
                     val currentAssignments = repo.getAssignments(householdId, taskId)
                     val myAssignment = currentAssignments.find { it.memberId == memberId }
                     if (myAssignment != null) {
@@ -650,17 +639,13 @@ class TaskScreenModel(
                     if (regenerated.isNotEmpty()) {
                         syncCalendarOnAssigned(householdId, regenerated)
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "completeTask: calendar sync failed for task $taskId", e)
                 }
 
                 // Update streak + achievements reusing memberBefore (evita 2
                 // lecturas extra de getMembers): la racha aún no se ha tocado
                 // en el servidor, así que memberBefore es el estado correcto de
                 // partida; el total de puntos post-premio se calcula en local.
-                try {
+                bestEffort(Unit, "TaskScreenModel") {
                     if (memberBefore != null) {
                         val streakUpdated = updateMemberStreak(householdId, memberBefore)
                         val memberForAchievements = streakUpdated.copy(
@@ -668,10 +653,6 @@ class TaskScreenModel(
                         )
                         checkAndAwardAchievements(householdId, memberForAchievements)
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "completeTask: streak/achievements update failed for task $taskId", e)
                 }
 
                 _actionState.value = TaskActionState.Success
@@ -681,7 +662,7 @@ class TaskScreenModel(
                 // el interstitial son efectos secundarios no críticos — un fallo
                 // aquí (analytics no inicializado, error interno de AdMob) no debe
                 // sobrescribir el TaskActionState.Success que ya se ha publicado.
-                try {
+                bestEffort(Unit, "TaskScreenModel") {
                     logAnalyticsEvent("task_completed")
                     // Panel v16, hallazgo C5: nunca mostrar anuncios a perfiles
                     // infantiles (docs/guia-publicacion.md exige explícitamente
@@ -691,10 +672,6 @@ class TaskScreenModel(
                     if (memberBefore?.role != "child") {
                         adController.maybeShowInterstitial()
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "completeTask: analytics/interstitial failed for task $taskId", e)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -840,15 +817,11 @@ class TaskScreenModel(
                 // reasignación y no desbloquear el logro hasta su siguiente
                 // compleción propia. Best-effort, igual que en los otros dos
                 // flujos: un fallo aquí no debe pisar el Success ya publicado.
-                try {
+                bestEffort(Unit, "TaskScreenModel") {
                     val newMember = repo.getMembers(householdId).find { it.id == newMemberId }
                     if (newMember != null) {
                         checkAndAwardAchievements(householdId, newMember)
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "reassignTaskCompletion: checkAndAwardAchievements failed", e)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -895,23 +868,19 @@ class TaskScreenModel(
                 // asignación de la siguiente ocurrencia regenerada — mismo
                 // motivo que en completeTask (panel v4, Experto 2 hallazgo
                 // #3 PROPUESTA aceptada).
-                try {
+                bestEffort(Unit, "TaskScreenModel") {
                     calendarSync.onTaskCompleted(householdId, assignment)
                     val regenerated = repo.getAssignments(householdId, taskId).filter { it.status == "assigned" }
                     if (regenerated.isNotEmpty()) {
                         syncCalendarOnAssigned(householdId, regenerated)
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "completeAssignment: calendar sync failed for task $taskId", e)
                 }
 
                 // Racha + logros: mismo patrón que completeTask (ver su comentario) —
                 // antes esta función solo otorgaba puntos sin actualizar racha ni
                 // desbloquear logros, así que un miembro que solo completa tareas
                 // asignadas (recurrentes con rotación, p.ej.) nunca acumulaba racha.
-                try {
+                bestEffort(Unit, "TaskScreenModel") {
                     if (memberBefore != null) {
                         val pointsAwarded = result.pointsAwarded ?: 0
                         val streakUpdated = updateMemberStreak(householdId, memberBefore)
@@ -920,10 +889,6 @@ class TaskScreenModel(
                         )
                         checkAndAwardAchievements(householdId, memberForAchievements)
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "completeAssignment: streak/achievements update failed for task $taskId", e)
                 }
 
                 _actionState.value = TaskActionState.Success
@@ -983,13 +948,8 @@ class TaskScreenModel(
 
                 _detailState.value = TaskDetailUiState.Success(task, assignments, members)
 
-                val myMemberId = try {
+                val myMemberId = bestEffort(null, "TaskScreenModel") {
                     repo.resolveCurrentMember(householdId)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("TaskScreenModel", "loadTaskDetail: resolveCurrentMember failed", e)
-                    null
                 }
                 _currentMemberId.value = myMemberId
                 _myAssignment.value = assignments.find { it.memberId == myMemberId }
@@ -1251,13 +1211,8 @@ class TaskScreenModel(
         )
 
         for (achievementId in newlyUnlocked) {
-            try {
+            bestEffort(Unit, "TaskScreenModel") {
                 repo.addMemberAchievement(householdId, member.id, achievementId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLog.w("TaskScreenModel", "checkAndAwardAchievements: addMemberAchievement failed for $achievementId", e)
-                // Non-critical failure
             }
         }
 
@@ -1430,29 +1385,21 @@ class TaskScreenModel(
 
     /** Tras asignar/reasignar: crea eventos para las asignaciones mías con fecha. */
     private suspend fun syncCalendarOnAssigned(householdId: String, assignments: List<TaskAssignmentResponse>) {
-        try {
+        // Best-effort: se reintenta en el próximo reconcile.
+        bestEffort(Unit, "TaskScreenModel") {
             val household = repo.getHousehold(householdId)
             calendarSync.onTaskAssigned(householdId, household.name, household.isPersonal, assignments)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            AppLog.w("TaskScreenModel", "syncCalendarOnAssigned failed for household $householdId", e)
-            // Best-effort: se reintenta en el próximo reconcile.
         }
     }
 
     /** Antes de desasignar/borrar: borra los eventos de Calendar vinculados a las asignaciones actuales. */
     private suspend fun syncCalendarOnUnassigned(householdId: String, taskId: String) {
-        try {
+        // Best-effort: el evento huérfano queda hasta el próximo reconcile.
+        bestEffort(Unit, "TaskScreenModel") {
             val assignments = repo.getAssignments(householdId, taskId)
             for (assignment in assignments) {
                 calendarSync.onTaskUnassigned(householdId, assignment)
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            AppLog.w("TaskScreenModel", "syncCalendarOnUnassigned failed for task $taskId", e)
-            // Best-effort: el evento huérfano queda hasta el próximo reconcile.
         }
     }
 }

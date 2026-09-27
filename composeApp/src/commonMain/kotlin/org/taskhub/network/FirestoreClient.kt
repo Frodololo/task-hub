@@ -25,6 +25,7 @@ import kotlinx.datetime.Clock
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.bestEffort
 import kotlin.concurrent.Volatile
 import kotlin.random.Random
 
@@ -509,18 +510,8 @@ internal suspend fun HttpClient.getWithRetry(
 ): HttpResponse = retryTransientReadFailure { get(url) { block() } }
 
 /**
- * Ejecuta [block] y devuelve [default] ante cualquier fallo NO fatal, pero
- * relanza [CancellationException] para no romper la cancelación cooperativa
- * de la corrutina. Compartida por los repos de dominio de `network/` (antes
- * duplicada 4 veces, una copia idéntica por archivo).
+ * Compartida por los repos de dominio de `network/` (antes duplicada 4
+ * veces, una copia idéntica por archivo) — delega en [bestEffort].
  */
-internal suspend inline fun <T> orDefault(default: T, block: () -> T): T {
-    return try {
-        block()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        AppLog.w("FirestoreClient", "orDefault: block failed, returning default value", e)
-        default
-    }
-}
+internal suspend inline fun <T> orDefault(default: T, block: () -> T): T =
+    bestEffort(default, "FirestoreClient", block)

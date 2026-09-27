@@ -3,6 +3,8 @@
 // `HouseholdRepository`/`MemberRepository`/`TaskRepository`/`NotificationRepository`/
 // `RewardsRepository`, y conserva aquí solo la orquestación que toca más de un
 // dominio a la vez (p.ej. completar una tarea otorga puntos a un miembro).
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
+
 package org.taskhub.network
 
 import io.ktor.client.*
@@ -35,6 +37,7 @@ import kotlinx.datetime.todayIn
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
+import kotlin.uuid.Uuid
 import org.taskhub.network.models.HouseholdResponse
 import org.taskhub.network.models.MemberResponse
 import org.taskhub.network.models.UserProfile
@@ -1146,7 +1149,8 @@ open class FirestoreRepository(
                     householdId = householdId,
                     fromMemberId = fromMemberId,
                     toMemberId = toMemberId,
-                    amount = amount
+                    amount = amount,
+                    idempotencyKey = Uuid.random().toString()
                 )
             )
             MemberRepository.DonateResult.Ok(
@@ -1308,7 +1312,8 @@ open class FirestoreRepository(
                         householdId = householdId,
                         taskId = taskId,
                         memberId = memberId,
-                        expectedLastCompletedDate = task.lastCompletedDate
+                        expectedLastCompletedDate = task.lastCompletedDate,
+                        idempotencyKey = Uuid.random().toString()
                     )
                 )
             } catch (e: CloudFunctionException) {
@@ -1504,7 +1509,12 @@ open class FirestoreRepository(
             val result = try {
                 cloudFunctionsClient.call<CompleteAssignmentRequest, TaskCompletionFunctionResult>(
                     "completeAssignment",
-                    CompleteAssignmentRequest(householdId = householdId, taskId = taskId, assignmentId = assignmentId)
+                    CompleteAssignmentRequest(
+                        householdId = householdId,
+                        taskId = taskId,
+                        assignmentId = assignmentId,
+                        idempotencyKey = Uuid.random().toString()
+                    )
                 )
             } catch (e: CloudFunctionException) {
                 AppLog.w("FirestoreRepository", "completeAssignment: completeAssignment failed for household=$householdId task=$taskId assignment=$assignmentId (status=${e.status})", e)
@@ -1697,7 +1707,12 @@ open class FirestoreRepository(
         try {
             val result = cloudFunctionsClient.call<RedeemRewardRequest, RedeemRewardResponse>(
                 "redeemReward",
-                RedeemRewardRequest(householdId = householdId, rewardId = rewardId, memberId = memberId)
+                RedeemRewardRequest(
+                    householdId = householdId,
+                    rewardId = rewardId,
+                    memberId = memberId,
+                    idempotencyKey = Uuid.random().toString()
+                )
             )
             return RewardRedemption(
                 id = result.redemptionId,

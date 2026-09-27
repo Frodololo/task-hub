@@ -20,7 +20,8 @@ data class CompleteRecurringTaskRequest(
      * deliberada respecto al nombre de campo del borrador de diseño (sección
      * 4, ya implementada así en la fase 2a).
      */
-    val expectedLastCompletedDate: Long? = null
+    val expectedLastCompletedDate: Long? = null,
+    val idempotencyKey: String? = null
 )
 
 /** Respuesta compartida por `completeRecurringTask` y `completeAssignment` (esta última añade `assignmentId` en el wire, ignorado aquí vía `ignoreUnknownKeys`). */
@@ -36,7 +37,8 @@ data class TaskCompletionFunctionResult(
 data class CompleteAssignmentRequest(
     val householdId: String,
     val taskId: String,
-    val assignmentId: String
+    val assignmentId: String,
+    val idempotencyKey: String? = null
 )
 
 @Serializable
@@ -66,7 +68,8 @@ data class UndoTaskCompletionResult(val reverted: Boolean)
 data class RedeemRewardRequest(
     val householdId: String,
     val rewardId: String,
-    val memberId: String
+    val memberId: String,
+    val idempotencyKey: String? = null
 )
 
 /** El coste real (`pointsSpent`) lo decide SIEMPRE el servidor leyendo `rewards/{rewardId}` — ver `functions/src/redeemReward.ts`. */
@@ -83,7 +86,8 @@ data class DonatePointsRequest(
     val householdId: String,
     val fromMemberId: String,
     val toMemberId: String,
-    val amount: Int
+    val amount: Int,
+    val idempotencyKey: String? = null
 )
 
 @Serializable

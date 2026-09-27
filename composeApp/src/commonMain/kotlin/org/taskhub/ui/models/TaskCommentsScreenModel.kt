@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.models.CommentResponse
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.bestEffort
 import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.i18n.toUserMessage
@@ -150,14 +151,9 @@ class TaskCommentsScreenModel(
      * cual, sin unificarlas (fuera de alcance de esta pasada de comentarios).
      */
     private suspend fun resolveCurrentMemberName(householdId: String, memberId: String): String {
-        return try {
+        return bestEffort(s("profile_default_name"), "TaskCommentsScreenModel") {
             val member = repo.getMembers(householdId).find { it.id == memberId }
             member?.displayName?.takeIf { it.isNotBlank() } ?: s("task_comment_default_author")
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            AppLog.w("TaskCommentsScreenModel", "resolveCurrentMemberName: getMembers failed", e)
-            s("profile_default_name")
         }
     }
 }

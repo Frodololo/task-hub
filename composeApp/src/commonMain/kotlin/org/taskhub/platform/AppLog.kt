@@ -8,6 +8,7 @@ package org.taskhub.platform
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import kotlin.concurrent.Volatile
+import kotlinx.coroutines.CancellationException
 
 /**
  * [d] solo emite en debug ([DebugFlags.isEnabled]) — en release queda
@@ -39,5 +40,23 @@ object AppLog {
     fun e(tag: String, message: String, throwable: Throwable? = null) {
         ensureInit()
         Napier.e(tag = tag, message = message, throwable = throwable)
+    }
+}
+
+/**
+ * Ejecuta [block] y devuelve [default] ante cualquier fallo NO fatal, pero
+ * relanza [CancellationException] para no romper la cancelación cooperativa
+ * de la corrutina. Sustituye los `try { } catch (e: CancellationException) {
+ * throw e } catch (_: Exception) { }` repetidos a mano por `network/` y
+ * `ui/models/`.
+ */
+suspend inline fun <T> bestEffort(default: T, tag: String = "bestEffort", block: () -> T): T {
+    return try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        AppLog.w(tag, "block failed, returning default", e)
+        default
     }
 }

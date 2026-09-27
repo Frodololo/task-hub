@@ -25,6 +25,7 @@ import org.taskhub.network.models.TaskAssignmentResponse
 import org.taskhub.network.models.TaskHistoryResponse
 import org.taskhub.network.models.TaskResponse
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.bestEffort
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.i18n.toUserMessage
 
@@ -113,12 +114,8 @@ class StatsScreenModel(
                     // pantalla que ya trae la colección completa de taskHistory,
                     // así que no hace falta un segundo fetch para decidir qué
                     // purgar (ronda de deuda aplicable 2026-09-12, punto B9).
-                    try {
+                    bestEffort(Unit, "StatsScreenModel") {
                         repo.purgeOldTaskHistory(householdId, history)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        AppLog.w("StatsScreenModel", "loadStats: purgeOldTaskHistory failed", e)
                     }
                 } else {
                     // Miembro no encontrado: el resultado de achievementsDeferred no se

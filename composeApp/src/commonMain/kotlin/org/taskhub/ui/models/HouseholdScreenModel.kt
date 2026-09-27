@@ -26,6 +26,7 @@ import org.taskhub.network.models.SpaceType
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SettingsStore
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.bestEffort
 import org.taskhub.platform.HapticKind
 import org.taskhub.ui.components.hapticsEnabled
 import org.taskhub.platform.logAnalyticsEvent
@@ -311,12 +312,8 @@ class HouseholdScreenModel(
                 // aceptado: es limpieza best-effort, no una garantía de
                 // borrado (tarjeta kanban "Paginación
                 // getMessages/getNotifications", 2026-09-13).
-                try {
+                bestEffort(Unit, "HouseholdScreenModel") {
                     repo.purgeOldMessages(householdId, messages)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("HouseholdScreenModel", "loadMessages: purgeOldMessages failed", e)
                 }
             } catch (e: CancellationException) {
                 throw e

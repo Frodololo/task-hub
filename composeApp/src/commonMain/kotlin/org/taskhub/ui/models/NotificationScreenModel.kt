@@ -29,6 +29,7 @@ import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.MAX_POLLED_NOTIFICATIONS
 import org.taskhub.network.models.NotificationResponse
 import org.taskhub.platform.AppLog
+import org.taskhub.platform.bestEffort
 import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.i18n.toUserMessage
 
@@ -103,12 +104,8 @@ class NotificationScreenModel(
                 // colección completa del HOGAR, no solo las de este miembro)
                 // cargada aquí, así que no hace falta un segundo fetch (ronda
                 // de deuda aplicable 2026-09-12, punto B9).
-                try {
+                bestEffort(Unit, "NotificationScreenModel") {
                     repo.purgeOldNotifications(householdId, all)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    AppLog.w("NotificationScreenModel", "loadNotifications: purgeOldNotifications failed", e)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -137,7 +134,8 @@ class NotificationScreenModel(
      */
     fun markAsRead(householdId: String, notificationId: String) {
         screenModelScope.launch {
-            try {
+            // Non-critical, ignore failures.
+            bestEffort(Unit, "NotificationScreenModel") {
                 repo.markNotificationRead(householdId, notificationId)
                 // Update local state
                 val current = _uiState.value
@@ -149,11 +147,6 @@ class NotificationScreenModel(
                     _unreadCount.value = unread
                     _uiState.value = NotificationUiState.Success(updated, unread)
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLog.w("NotificationScreenModel", "markAsRead failed for notification $notificationId", e)
-                // Non-critical, ignore
             }
         }
     }
@@ -167,15 +160,11 @@ class NotificationScreenModel(
      */
     fun refreshUnreadCount(householdId: String, memberId: String) {
         screenModelScope.launch {
-            try {
+            // Ignore polling errors: background refresh, not worth interrupting the user.
+            bestEffort(Unit, "NotificationScreenModel") {
                 val all = repo.getNotifications(householdId, limit = MAX_POLLED_NOTIFICATIONS)
                 val unread = all.count { it.memberId == memberId && !it.read }
                 _unreadCount.value = unread
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLog.w("NotificationScreenModel", "refreshUnreadCount failed for household $householdId", e)
-                // Ignore polling errors
             }
         }
     }
