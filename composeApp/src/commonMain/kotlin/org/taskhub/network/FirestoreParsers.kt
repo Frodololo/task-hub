@@ -15,6 +15,7 @@ import org.taskhub.network.models.NotificationResponse
 import org.taskhub.network.models.RewardRedemption
 import org.taskhub.network.models.RewardResponse
 import org.taskhub.network.models.Subtask
+import org.taskhub.network.models.spaceTypeFromFirestoreValue
 import org.taskhub.network.models.TaskAssignmentResponse
 import org.taskhub.network.models.TaskHistoryResponse
 import org.taskhub.network.models.TaskResponse
@@ -68,7 +69,8 @@ object FirestoreParsers {
             updatedAt = f["updatedAt"]?.integerValue?.toLongOrNull() ?: 0L,
             isPersonal = f["isPersonal"]?.booleanValue ?: false,
             ownerId = f["ownerId"]?.stringValue ?: "",
-            timezone = f["timezone"]?.stringValue
+            timezone = f["timezone"]?.stringValue,
+            spaceType = spaceTypeFromFirestoreValue(f["spaceType"]?.stringValue)
         )
     }
 

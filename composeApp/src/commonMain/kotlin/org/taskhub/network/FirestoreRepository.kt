@@ -56,6 +56,7 @@ import org.taskhub.network.models.NotificationResponse
 import org.taskhub.network.models.RewardResponse
 import org.taskhub.network.models.RewardRedemption
 import org.taskhub.network.models.Subtask
+import org.taskhub.network.models.SpaceType
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SavedHousehold
 import org.taskhub.storage.SettingsStore
@@ -428,8 +429,12 @@ open class FirestoreRepository(
     // ────────────────────────────────────────────────────────
 
     /** Create a household (auto-generated doc ID). Requires auth (write). */
-    suspend fun createHousehold(name: String, isPersonal: Boolean = false): HouseholdResponse =
-        householdRepository.createHousehold(name, isPersonal)
+    suspend fun createHousehold(
+        name: String,
+        isPersonal: Boolean = false,
+        spaceType: SpaceType = SpaceType.HOME
+    ): HouseholdResponse =
+        householdRepository.createHousehold(name = name, isPersonal = isPersonal, spaceType = spaceType)
 
     /**
      * Obtiene (o crea) el espacio Personal del usuario actual con un ID DETERMINISTA

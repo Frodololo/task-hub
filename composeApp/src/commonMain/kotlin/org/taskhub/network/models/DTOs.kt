@@ -7,7 +7,42 @@
 package org.taskhub.network.models
 
 import androidx.compose.runtime.Immutable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+/**
+ * Tipo de espacio (empaquetado/copy, no cambia la lógica de negocio): decide
+ * qué emoji/copy contextual se muestra al crear y listar un hogar. El valor
+ * Firestore serializado ([SerialName]) es el usado en el campo
+ * `spaceType` del documento `households/{id}` — ver [HouseholdResponse.spaceType].
+ * [defaultNameRes] es orientativo (sugerencia de placeholder), NO una clave
+ * de [org.taskhub.ui.i18n.AppStrings] — los strings reales usan las claves
+ * `space_type_*`.
+ */
+@Serializable
+enum class SpaceType(val emoji: String, val defaultNameRes: String) {
+    @SerialName("home") HOME("🏠", "Tipo casa"),
+    @SerialName("flat") FLAT_SHARE("🏢", "Tipo piso compartido"),
+    @SerialName("study") STUDY_GROUP("📚", "Tipo trabajo universidad"),
+    @SerialName("club") CLUB("⚽", "Tipo grupo / club");
+}
+
+/** Valor persistido en el campo `spaceType` del documento `households/{id}` en Firestore REST. */
+val SpaceType.firestoreValue: String
+    get() = when (this) {
+        SpaceType.HOME -> "home"
+        SpaceType.FLAT_SHARE -> "flat"
+        SpaceType.STUDY_GROUP -> "study"
+        SpaceType.CLUB -> "club"
+    }
+
+/** Inverso de [SpaceType.firestoreValue]. Desconocido/null → [SpaceType.HOME] (hogares legacy). */
+fun spaceTypeFromFirestoreValue(value: String?): SpaceType = when (value) {
+    "flat" -> SpaceType.FLAT_SHARE
+    "study" -> SpaceType.STUDY_GROUP
+    "club" -> SpaceType.CLUB
+    else -> SpaceType.HOME
+}
 
 // ── Request DTOs ──────────────────────────────────────────
 // NOTA: estos 3 DTOs no tienen ningún call-site en el resto del código (no
@@ -58,7 +93,9 @@ data class HouseholdResponse(
      * creados antes de esta migración — las CF caen a `Europe/Madrid`.
      * Por defecto, la TZ del dispositivo de quien crea el hogar.
      */
-    val timezone: String? = null
+    val timezone: String? = null,
+    /** Tipo de espacio (casa/piso/estudio/grupo). Default HOME para hogares creados antes de este campo. */
+    val spaceType: SpaceType = SpaceType.HOME
 )
 
 /**

@@ -200,7 +200,8 @@ private fun HouseholdProfileCard(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    household.name,
+                    if (household.isPersonal) household.name
+                    else "${household.spaceType.emoji} ${household.name}",
                     fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyLarge
                 )

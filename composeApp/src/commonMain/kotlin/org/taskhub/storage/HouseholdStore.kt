@@ -9,6 +9,7 @@ import com.russhwolf.settings.Settings
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.taskhub.network.models.SpaceType
 
 /**
  * Locally-saved household reference (ID + display info).
@@ -21,7 +22,8 @@ data class SavedHousehold(
     val name: String,
     val inviteCode: String,
     /** True si es el espacio "Personal" auto-creado (sin invitaciones). */
-    val isPersonal: Boolean = false
+    val isPersonal: Boolean = false,
+    val spaceType: SpaceType = SpaceType.HOME
 )
 
 /**
@@ -40,7 +42,8 @@ class HouseholdStore(private val settings: Settings) {
         householdId: String,
         householdName: String,
         inviteCode: String,
-        isPersonal: Boolean = false
+        isPersonal: Boolean = false,
+        spaceType: SpaceType = SpaceType.HOME
     ) {
         val current = getSavedHouseholds().toMutableList()
         val existing = current.indexOfFirst { it.id == householdId }
@@ -48,7 +51,8 @@ class HouseholdStore(private val settings: Settings) {
             id = householdId,
             name = householdName,
             inviteCode = inviteCode,
-            isPersonal = isPersonal
+            isPersonal = isPersonal,
+            spaceType = spaceType
         )
         if (existing >= 0) {
             current[existing] = entry

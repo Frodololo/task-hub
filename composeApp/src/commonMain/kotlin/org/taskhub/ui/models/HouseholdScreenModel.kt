@@ -22,6 +22,7 @@ import org.taskhub.network.HouseholdRepository
 import org.taskhub.network.models.HouseholdResponse
 import org.taskhub.network.models.MemberResponse
 import org.taskhub.network.models.MessageResponse
+import org.taskhub.network.models.SpaceType
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SettingsStore
 import org.taskhub.platform.AppLog
@@ -92,8 +93,8 @@ class HouseholdScreenModel(
     /** Ver [FirestoreRepository.appreciationRemaining]. */
     fun appreciationRemaining(member: MemberResponse): Int = repo.appreciationRemaining(member)
 
-    /** Crea un hogar nuevo con [name] y lo guarda como hogar actual del usuario. */
-    fun createHousehold(name: String) {
+    /** Crea un hogar nuevo con [name] y [spaceType], y lo guarda como hogar actual del usuario. */
+    fun createHousehold(name: String, spaceType: SpaceType = SpaceType.HOME) {
         // Panel v16 (2026-09-24), hallazgo QA: `createHousehold` NO es
         // idempotente (cada llamada crea un documento Firestore nuevo con ID
         // autogenerado) — era la única mutación del código sin esta guarda
@@ -105,8 +106,8 @@ class HouseholdScreenModel(
         screenModelScope.launch {
             _uiState.value = HouseholdUiState.Loading
             try {
-                val household = repo.createHousehold(name)
-                householdStore.saveHousehold(household.id, household.name, household.inviteCode)
+                val household = repo.createHousehold(name, spaceType = spaceType)
+                householdStore.saveHousehold(household.id, household.name, household.inviteCode, spaceType = household.spaceType)
                 authManager.syncHouseholdsToCloud()
                 logAnalyticsEvent("household_created")
                 _uiState.value = HouseholdUiState.Success(household)
@@ -136,7 +137,7 @@ class HouseholdScreenModel(
             try {
                 val household = repo.joinHousehold(inviteCode)
 
-                householdStore.saveHousehold(household.id, household.name, household.inviteCode)
+                householdStore.saveHousehold(household.id, household.name, household.inviteCode, spaceType = household.spaceType)
 
                 // Si ya somos miembros (con cualquiera de nuestras identidades),
                 // no volvemos a crear perfil: navegamos directo al hogar.

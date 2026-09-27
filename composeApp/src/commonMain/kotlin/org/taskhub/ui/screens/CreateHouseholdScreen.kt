@@ -25,11 +25,21 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import org.taskhub.network.models.SpaceType
 import org.taskhub.ui.components.LocalAppSettings
 import org.taskhub.ui.components.TaskHubTopBar
+import org.taskhub.ui.components.filterChipCheckIcon
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.HouseholdScreenModel
 import org.taskhub.ui.models.HouseholdUiState
+
+/** Clave i18n del label y del placeholder contextual de cada [SpaceType], en el orden mostrado en el selector. */
+private val SPACE_TYPE_OPTIONS = listOf(
+    SpaceType.HOME to ("space_type_home" to "space_type_placeholder_home"),
+    SpaceType.FLAT_SHARE to ("space_type_flat" to "space_type_placeholder_flat"),
+    SpaceType.STUDY_GROUP to ("space_type_study" to "space_type_placeholder_study"),
+    SpaceType.CLUB to ("space_type_club" to "space_type_placeholder_club")
+)
 
 /** Formulario mínimo: un único campo (nombre del hogar) obligatorio. */
 class CreateHouseholdScreen : Screen {
@@ -44,6 +54,7 @@ class CreateHouseholdScreen : Screen {
         val s = { key: String -> AppStrings.get(key, appSettings.currentLanguage) }
 
         var householdName by remember { mutableStateOf("") }
+        var selectedType by remember { mutableStateOf(SpaceType.HOME) }
         val focusManager = LocalFocusManager.current
 
         LaunchedEffect(Unit) {
@@ -97,11 +108,45 @@ class CreateHouseholdScreen : Screen {
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                Text(
+                    text = s("space_type_selector_title"),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SPACE_TYPE_OPTIONS.chunked(2).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            row.forEach { (type, labelKeys) ->
+                                val (labelKey, _) = labelKeys
+                                FilterChip(
+                                    selected = selectedType == type,
+                                    onClick = { selectedType = type },
+                                    label = { Text(s(labelKey)) },
+                                    modifier = Modifier.weight(1f),
+                                    leadingIcon = filterChipCheckIcon(selectedType == type)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 OutlinedTextField(
                     value = householdName,
                     onValueChange = { householdName = it },
                     label = { Text(s("create_household_name_label")) },
-                    placeholder = { Text(s("create_household_name_placeholder")) },
+                    placeholder = { Text(s(SPACE_TYPE_OPTIONS.first { it.first == selectedType }.second.second)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -116,7 +161,7 @@ class CreateHouseholdScreen : Screen {
                 Button(
                     onClick = {
                         focusManager.clearFocus()
-                        model.createHousehold(householdName.trim())
+                        model.createHousehold(householdName.trim(), selectedType)
                     },
                     modifier = Modifier
                         .fillMaxWidth()

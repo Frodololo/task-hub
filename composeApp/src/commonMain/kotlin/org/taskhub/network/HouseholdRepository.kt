@@ -16,6 +16,8 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import org.taskhub.network.models.HouseholdResponse
 import org.taskhub.network.models.MessageResponse
+import org.taskhub.network.models.SpaceType
+import org.taskhub.network.models.firestoreValue
 import org.taskhub.platform.AppLog
 import org.taskhub.platform.secureRandomInt
 import org.taskhub.storage.HouseholdStore
@@ -83,7 +85,8 @@ class HouseholdRepository(
     suspend fun createHousehold(
         name: String,
         isPersonal: Boolean = false,
-        deviceTimezone: String = TimeZone.currentSystemDefault().id
+        deviceTimezone: String = TimeZone.currentSystemDefault().id,
+        spaceType: SpaceType = SpaceType.HOME
     ): HouseholdResponse {
         ensureAuth()
         val now = Clock.System.now().toEpochMilliseconds()
@@ -97,7 +100,8 @@ class HouseholdRepository(
             "ownerId" to FirestoreValue(stringValue = ownerId),
             "createdAt" to FirestoreValue(integerValue = now.toString()),
             "updatedAt" to FirestoreValue(integerValue = now.toString()),
-            "timezone" to FirestoreValue(stringValue = deviceTimezone)
+            "timezone" to FirestoreValue(stringValue = deviceTimezone),
+            "spaceType" to FirestoreValue(stringValue = spaceType.firestoreValue)
         )
 
         val response: FirestoreDocumentResponse = client.post("$baseUrl/households") {
@@ -120,7 +124,7 @@ class HouseholdRepository(
             }
         }
 
-        val household = HouseholdResponse(id, name, inviteCode, now, now, isPersonal, ownerId, deviceTimezone)
+        val household = HouseholdResponse(id, name, inviteCode, now, now, isPersonal, ownerId, deviceTimezone, spaceType)
         // Se cachea de inmediato para que getHousehold ya lo tenga en la primera carga.
         taskCache.cacheHousehold(household)
         return household
