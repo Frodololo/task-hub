@@ -201,6 +201,19 @@ class SettingsStore(
     fun getGoogleEmail(): String? =
         settings.getStringOrNull(KEY_GOOGLE_EMAIL)
 
+    /** Nombre visible de la cuenta de Google, para pre-rellenar formularios de perfil/hogar. */
+    fun getGoogleDisplayName(): String? =
+        settings.getStringOrNull(KEY_GOOGLE_DISPLAY_NAME)
+
+    /** Guarda (o borra, si [name] es `null` o vacío) el nombre visible de la cuenta de Google. */
+    fun setGoogleDisplayName(name: String?) {
+        if (!name.isNullOrBlank()) {
+            settings.putString(KEY_GOOGLE_DISPLAY_NAME, name)
+        } else {
+            settings.remove(KEY_GOOGLE_DISPLAY_NAME)
+        }
+    }
+
     /** Guarda (o borra, si algún parámetro es `null`) el UID/email de la sesión de Google. */
     fun setGoogleAuth(uid: String?, email: String?) {
         if (uid != null) {
@@ -237,6 +250,7 @@ class SettingsStore(
     fun clearGoogleAuth() {
         settings.remove(KEY_GOOGLE_UID)
         settings.remove(KEY_GOOGLE_EMAIL)
+        settings.remove(KEY_GOOGLE_DISPLAY_NAME)
         secureStore.remove(KEY_GOOGLE_REFRESH_TOKEN)
         settings.remove(KEY_GOOGLE_REFRESH_TOKEN)
     }
@@ -377,6 +391,7 @@ class SettingsStore(
         private const val KEY_CALENDAR_SYNC_ENABLED = "taskhub_calendar_sync_enabled"
         private const val KEY_GOOGLE_UID = "taskhub_google_uid"
         private const val KEY_GOOGLE_EMAIL = "taskhub_google_email"
+        private const val KEY_GOOGLE_DISPLAY_NAME = "taskhub_google_display_name"
         private const val KEY_GOOGLE_REFRESH_TOKEN = "taskhub_google_refresh_token"
         private const val KEY_CALENDAR_IDS = "taskhub_calendar_ids"
         private const val KEY_CALENDAR_RECONCILE_AT = "taskhub_calendar_reconcile_at"

@@ -103,7 +103,9 @@ data class HouseholdResponse(
      */
     val timezone: String? = null,
     /** Tipo de espacio (casa/piso/estudio/grupo). Default HOME para hogares creados antes de este campo. */
-    val spaceType: SpaceType = SpaceType.HOME
+    val spaceType: SpaceType = SpaceType.HOME,
+    /** Emoji elegido manualmente por el creador. `null` = usar el de [spaceType] (hogares legacy o sin elección). */
+    val emoji: String? = null
 )
 
 /**

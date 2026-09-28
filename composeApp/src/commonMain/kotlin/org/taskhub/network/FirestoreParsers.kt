@@ -70,7 +70,8 @@ object FirestoreParsers {
             isPersonal = f["isPersonal"]?.booleanValue ?: false,
             ownerId = f["ownerId"]?.stringValue ?: "",
             timezone = f["timezone"]?.stringValue,
-            spaceType = spaceTypeFromFirestoreValue(f["spaceType"]?.stringValue)
+            spaceType = spaceTypeFromFirestoreValue(f["spaceType"]?.stringValue),
+            emoji = f["emoji"]?.stringValue
         )
     }
 

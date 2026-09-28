@@ -86,7 +86,8 @@ class HouseholdRepository(
         name: String,
         isPersonal: Boolean = false,
         deviceTimezone: String = TimeZone.currentSystemDefault().id,
-        spaceType: SpaceType = SpaceType.HOME
+        spaceType: SpaceType = SpaceType.HOME,
+        emoji: String? = null
     ): HouseholdResponse {
         ensureAuth()
         val now = Clock.System.now().toEpochMilliseconds()
@@ -102,7 +103,7 @@ class HouseholdRepository(
             "updatedAt" to FirestoreValue(integerValue = now.toString()),
             "timezone" to FirestoreValue(stringValue = deviceTimezone),
             "spaceType" to FirestoreValue(stringValue = spaceType.firestoreValue)
-        )
+        ) + if (emoji != null) mapOf("emoji" to FirestoreValue(stringValue = emoji)) else emptyMap()
 
         val response: FirestoreDocumentResponse = client.post("$baseUrl/households") {
             withAuth()
@@ -124,7 +125,7 @@ class HouseholdRepository(
             }
         }
 
-        val household = HouseholdResponse(id, name, inviteCode, now, now, isPersonal, ownerId, deviceTimezone, spaceType)
+        val household = HouseholdResponse(id, name, inviteCode, now, now, isPersonal, ownerId, deviceTimezone, spaceType, emoji)
         // Se cachea de inmediato para que getHousehold ya lo tenga en la primera carga.
         taskCache.cacheHousehold(household)
         return household

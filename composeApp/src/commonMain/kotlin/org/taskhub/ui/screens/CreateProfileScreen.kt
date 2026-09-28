@@ -26,10 +26,13 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import org.koin.compose.koinInject
 import org.taskhub.ui.components.LocalAppSettings
 import org.taskhub.ui.components.TaskHubTopBar
 import org.taskhub.ui.components.filterChipCheckIcon
 import org.taskhub.ui.i18n.AppStrings
+import org.taskhub.ui.models.GoogleAuthManager
+import org.taskhub.ui.models.GoogleAuthState
 import org.taskhub.ui.models.HouseholdScreenModel
 import org.taskhub.ui.models.HouseholdUiState
 import org.taskhub.ui.models.MemberScreenModel
@@ -53,14 +56,25 @@ data class CreateProfileScreen(val householdId: String) : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val householdModel = koinScreenModel<HouseholdScreenModel>()
         val memberModel = koinScreenModel<MemberScreenModel>()
+        val authManager = koinInject<GoogleAuthManager>()
         val householdState by householdModel.uiState.collectAsState()
         val memberState by memberModel.uiState.collectAsState()
+        val authState by authManager.state.collectAsState()
         val appSettings = LocalAppSettings.current
         val s = { key: String -> AppStrings.get(key, appSettings.currentLanguage) }
 
         var displayName by remember { mutableStateOf("") }
         var role by remember { mutableStateOf("admin") }
         val focusManager = LocalFocusManager.current
+
+        // Pre-rellena el nombre con el de la cuenta de Google si el usuario
+        // todavía no ha escrito nada — sigue siendo editable.
+        LaunchedEffect(authState) {
+            val signedIn = authState as? GoogleAuthState.SignedIn
+            if (displayName.isEmpty() && signedIn?.displayName != null) {
+                displayName = signedIn.displayName
+            }
+        }
 
         LaunchedEffect(Unit) {
             memberModel.reset()

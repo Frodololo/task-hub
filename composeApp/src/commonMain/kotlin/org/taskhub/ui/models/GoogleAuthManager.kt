@@ -39,7 +39,7 @@ import org.taskhub.ui.i18n.toUserMessage
  */
 sealed class GoogleAuthState {
     data object SigningIn : GoogleAuthState()
-    data class SignedIn(val email: String?) : GoogleAuthState()
+    data class SignedIn(val email: String?, val displayName: String? = null) : GoogleAuthState()
     /** Sin sesión — Task Hub exige login con Google (no hay modo anónimo, ver `docs/google-only-auth-2026-09-12.md`). */
     data object SignedOut : GoogleAuthState()
     data class Error(val message: String) : GoogleAuthState()
@@ -118,7 +118,7 @@ class GoogleAuthManager(
 
     private val _state = MutableStateFlow<GoogleAuthState>(
         if (settingsStore.isGoogleLoggedIn()) {
-            GoogleAuthState.SignedIn(settingsStore.getGoogleEmail())
+            GoogleAuthState.SignedIn(settingsStore.getGoogleEmail(), settingsStore.getGoogleDisplayName())
         } else {
             GoogleAuthState.SignedOut
         }
@@ -462,13 +462,14 @@ class GoogleAuthManager(
         try {
             val result = repo.signInWithGoogle(googleIdToken)
             settingsStore.setGoogleAuth(result.uid, result.email)
+            settingsStore.setGoogleDisplayName(result.displayName)
             restoreHouseholds(result.uid)
             repointPersonalHousehold()
             syncHouseholdsToCloud()
             syncGoogleAvatar(result)
             // Login correcto: resetea el sentinel de reintentos (ver [signIn]).
             consecutiveSignInFailures = 0
-            _state.value = GoogleAuthState.SignedIn(result.email)
+            _state.value = GoogleAuthState.SignedIn(result.email, result.displayName)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
