@@ -81,5 +81,5 @@ encargos/task-4-en-1-tecnico-2026-09-29.md
 
 ```
 $ git log --oneline -1
-<pendiente — ver el commit que sigue a este informe>
+a7d083e feat: auto-rellenar nombre Google, selector emoji grupos, idempotencyKey real, bestEffort CalendarSync
 ```
