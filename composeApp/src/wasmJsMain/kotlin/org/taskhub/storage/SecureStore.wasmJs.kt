@@ -19,11 +19,11 @@ private const val KEY_PREFIX = "taskhub_secure_"
 // Clave AES-256 efímera (32 bytes), generada una vez en la carga del módulo
 // via Web Crypto API (`crypto.getRandomValues`). No se persiste: se pierde
 // al recargar la página. Se pasa a JS como Uint8Array directamente.
-private val ephemeralKey: ByteArray = jsRandomBytes(32)
+private val ephemeralKey: String = jsRandomBytes(32)
 
 /** Genera [length] bytes aleatorios via Web Crypto API (síncrono, CSPRNG). */
-@JsFun("(l) => { const a = new Uint8Array(l); crypto.getRandomValues(a); return a; }")
-private external fun jsRandomBytes(length: Int): ByteArray
+@JsFun("(l) => { const a = new Uint8Array(l); crypto.getRandomValues(a); return String.fromCharCode(...a); }")
+private external fun jsRandomBytes(length: Int): String
 
 /**
  * AES-256-CTR encrypt: toma la clave como Uint8Array, el texto plano como
@@ -31,7 +31,8 @@ private external fun jsRandomBytes(length: Int): ByteArray
  * devuelve base64(IV + ciphertext). CTR es simétrico.
  */
 @JsFun("""(key, plainText) => {
-    const K = key; const D = new TextEncoder().encode(plainText);
+    const K = new Uint8Array(key.length); for(let i=0;i<key.length;i++) K[i]=key.charCodeAt(i);
+    const D = new TextEncoder().encode(plainText);
     // AES S-box
     const S=new Uint8Array([99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,118,202,130,201,125,250,89,71,240,173,212,162,175,156,164,114,192,183,253,147,38,54,63,247,204,52,165,229,241,113,216,49,21,4,199,35,195,24,150,5,154,7,18,128,226,235,39,178,117,9,131,44,26,27,110,90,160,82,59,214,179,41,227,47,132,83,209,0,237,32,252,177,91,106,203,190,57,74,76,88,207,208,239,170,251,67,77,51,133,69,249,2,127,80,60,159,168,81,163,64,143,146,157,56,245,188,182,218,33,16,255,243,210,205,12,19,236,95,151,68,23,196,167,126,61,100,93,25,115,96,129,79,220,34,42,144,136,70,238,184,20,222,94,11,219,224,50,58,10,73,6,36,92,194,211,172,98,145,149,228,121,231,200,55,109,141,213,78,169,108,86,244,234,101,122,174,8,186,120,37,46,28,166,180,198,232,221,116,31,75,189,139,138,112,62,181,102,72,3,246,14,97,53,87,185,134,193,29,158,225,248,150,17,105,217,142,148,155,30,135,233,206,85,40,223,140,161,137,13,191,230,66,104,65,153,45,15,176,84,187,22]);
     // Expand key: 32 bytes -> 60 words
@@ -84,7 +85,7 @@ private external fun jsRandomBytes(length: Int): ByteArray
     let bin=''; for(let i=0;i<combined.length;i++) bin+=String.fromCharCode(combined[i]);
     return btoa(bin);
 }""")
-private external fun jsAesCtrEncrypt(key: ByteArray, plainText: String): String
+private external fun jsAesCtrEncrypt(key: String, plainText: String): String
 
 /**
  * AES-256-CTR decrypt: extrae IV (primeros 12 bytes) del payload base64,
@@ -92,7 +93,8 @@ private external fun jsAesCtrEncrypt(key: ByteArray, plainText: String): String
  * vacío si el payload es inválido.
  */
 @JsFun("""(key, encB64) => {
-    const K = key; const enc = Uint8Array.from(atob(encB64),c=>c.charCodeAt(0));
+    const K = new Uint8Array(key.length); for(let i=0;i<key.length;i++) K[i]=key.charCodeAt(i);
+    const enc = Uint8Array.from(atob(encB64),c=>c.charCodeAt(0));
     if (enc.length<12) return '';
     const iv = enc.slice(0,12); const D = enc.slice(12);
     // AES S-box
@@ -107,7 +109,7 @@ private external fun jsAesCtrEncrypt(key: ByteArray, plainText: String): String
         else if (i%8===4) t=(S[t>>>24]<<24)|(S[(t>>16)&255]<<16)|(S[(t>>8)&255]<<8)|S[t&255];
         w[i]=w[i-8]^t;
     }
-    function enc(b) {
+    function encDecrypt(b) {
         let s=b.slice();
         for (let i=0;i<4;i++) s[i]^=w[i];
         for (let r=1;r<=14;r++) {
@@ -135,7 +137,7 @@ private external fun jsAesCtrEncrypt(key: ByteArray, plainText: String): String
     ctr.set(iv); ctr[15]=1;
     const out = new Uint8Array(D.length);
     for (let i=0;i<D.length;i+=16) {
-        const ks = enc([(ctr[0]<<24)|(ctr[1]<<16)|(ctr[2]<<8)|ctr[3],(ctr[4]<<24)|(ctr[5]<<16)|(ctr[6]<<8)|ctr[7],(ctr[8]<<24)|(ctr[9]<<16)|(ctr[10]<<8)|ctr[11],(ctr[12]<<24)|(ctr[13]<<16)|(ctr[14]<<8)|ctr[15]]);
+        const ks = encDecrypt([(ctr[0]<<24)|(ctr[1]<<16)|(ctr[2]<<8)|ctr[3],(ctr[4]<<24)|(ctr[5]<<16)|(ctr[6]<<8)|ctr[7],(ctr[8]<<24)|(ctr[9]<<16)|(ctr[10]<<8)|ctr[11],(ctr[12]<<24)|(ctr[13]<<16)|(ctr[14]<<8)|ctr[15]]);
         for (let j=0;j<16&&i+j<D.length;j++) out[i+j]=D[i+j]^(ks[j>>>2]>>>(24-(j&3)*8)&255);
         for (let j=15;j>=12;j--) if (++ctr[j]!==0) break;
     }
@@ -147,7 +149,7 @@ private external fun jsAesCtrEncrypt(key: ByteArray, plainText: String): String
     // `null` limpio (panel v15, oleada 2, hallazgo estrella).
     return new TextDecoder('utf-8', {fatal: true}).decode(out);
 }""")
-private external fun jsAesCtrDecrypt(key: ByteArray, encB64: String): String
+private external fun jsAesCtrDecrypt(key: String, encB64: String): String
 
 /**
  * Ver [SecureStore]. El navegador no expone un keychain de sistema: en vez de
@@ -160,15 +162,16 @@ private external fun jsAesCtrDecrypt(key: ByteArray, encB64: String): String
 actual fun createSecureStore(): SecureStore = WasmJsSecureStore()
 
 private class WasmJsSecureStore : SecureStore {
-    override fun getString(key: String): String? =
-        try {
+    override fun getString(key: String): String? {
+        return try {
             val stored = localStorage.getItem(KEY_PREFIX + key) ?: return null
             // Datos legacy (sin prefijo v1) se devuelven tal cual (migración)
-            if (!stored.startsWith("v1:")) return stored
+            if (!stored.startsWith("v1:")) { return stored }
             jsAesCtrDecrypt(ephemeralKey, stored.removePrefix("v1:"))
         } catch (_: Throwable) {
             null
         }
+    }
 
     override fun putString(key: String, value: String) {
         try {
