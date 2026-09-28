@@ -282,10 +282,10 @@ fun App(
             // Naturaleza/Minimal), no una paleta Teal/Coral fija — se resuelve aquí
             // igual que `themeType` más abajo porque `LocalAppSettings` aún no
             // está disponible en esta fase.
-            val splashThemeType = when (settingsStore.getTheme()) {
-                "NATURALEZA" -> TaskHubThemeType.NATURALEZA
-                "MINIMAL" -> TaskHubThemeType.MINIMAL
-                else -> TaskHubThemeType.DEFAULT
+            val splashThemeType = try {
+                TaskHubThemeType.valueOf(settingsStore.getTheme())
+            } catch (_: IllegalArgumentException) {
+                TaskHubThemeType.DEFAULT
             }
             SplashScreen(
                 lang = settingsStore.getLanguage(),
@@ -298,10 +298,10 @@ fun App(
         // Reactive theme from settings
         var themeType by remember {
             mutableStateOf(
-                when (settingsStore.getTheme()) {
-                    "NATURALEZA" -> TaskHubThemeType.NATURALEZA
-                    "MINIMAL" -> TaskHubThemeType.MINIMAL
-                    else -> TaskHubThemeType.DEFAULT
+                try {
+                    TaskHubThemeType.valueOf(settingsStore.getTheme())
+                } catch (_: IllegalArgumentException) {
+                    TaskHubThemeType.DEFAULT
                 }
             )
         }
@@ -317,13 +317,7 @@ fun App(
                 currentTheme = themeType,
                 onThemeChanged = { newTheme ->
                     themeType = newTheme
-                    settingsStore.setTheme(
-                        when (newTheme) {
-                            TaskHubThemeType.NATURALEZA -> "NATURALEZA"
-                            TaskHubThemeType.MINIMAL -> "MINIMAL"
-                            else -> "DEFAULT"
-                        }
-                    )
+                    settingsStore.setTheme(newTheme.name)
                 },
                 onLanguageChanged = { newLang ->
                     currentLanguage = newLang

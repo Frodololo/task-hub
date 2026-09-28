@@ -140,6 +140,9 @@ object AppStrings {
             "theme_default" to "Clásico",
             "theme_naturaleza" to "Naturaleza",
             "theme_minimal" to "Minimal",
+            "theme_oceano" to "Océano",
+            "theme_atardecer" to "Atardecer",
+            "theme_midnight" to "Medianoche",
 
             // Languages
             "lang_spanish" to "Español",
@@ -866,6 +869,9 @@ object AppStrings {
             "theme_default" to "Classic",
             "theme_naturaleza" to "Nature",
             "theme_minimal" to "Minimal",
+            "theme_oceano" to "Ocean",
+            "theme_atardecer" to "Sunset",
+            "theme_midnight" to "Midnight",
 
             // Languages
             "lang_spanish" to "Español",

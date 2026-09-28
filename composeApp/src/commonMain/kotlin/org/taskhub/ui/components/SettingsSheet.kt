@@ -4,11 +4,13 @@
 // de pantallas con acceso a ajustes.
 package org.taskhub.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -17,6 +19,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -33,6 +37,12 @@ import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.GoogleAuthManager
 import org.taskhub.ui.models.GoogleAuthState
 import org.taskhub.ui.models.ProfileScreenModel
+import org.taskhub.ui.theme.MidnightBlue500
+import org.taskhub.ui.theme.MonoGray600
+import org.taskhub.ui.theme.OceanBlue600
+import org.taskhub.ui.theme.SunsetPurple600
+import org.taskhub.ui.theme.Green600
+import org.taskhub.ui.theme.Teal600
 import org.taskhub.ui.theme.TaskHubThemeType
 import org.taskhub.platform.hasCalendarSupport
 import org.taskhub.platform.hasHomeScreenWidget
@@ -388,22 +398,46 @@ fun SettingsSheet(
 
         // ── Theme ────────────────────────────────────────
         SettingsSection(title = s("settings_theme")) {
-            Column(modifier = Modifier.selectableGroup()) {
-                RadioOptionRow(
-                    label = s("theme_default"),
-                    selected = appSettings.currentTheme == TaskHubThemeType.DEFAULT,
-                    onClick = { appSettings.onThemeChanged(TaskHubThemeType.DEFAULT) }
+            var themeMenuExpanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = themeMenuExpanded,
+                onExpandedChange = { themeMenuExpanded = it }
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    readOnly = true,
+                    value = getThemeLabel(appSettings.currentTheme, s),
+                    onValueChange = {},
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = themeMenuExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                 )
-                RadioOptionRow(
-                    label = s("theme_naturaleza"),
-                    selected = appSettings.currentTheme == TaskHubThemeType.NATURALEZA,
-                    onClick = { appSettings.onThemeChanged(TaskHubThemeType.NATURALEZA) }
-                )
-                RadioOptionRow(
-                    label = s("theme_minimal"),
-                    selected = appSettings.currentTheme == TaskHubThemeType.MINIMAL,
-                    onClick = { appSettings.onThemeChanged(TaskHubThemeType.MINIMAL) }
-                )
+                ExposedDropdownMenu(
+                    expanded = themeMenuExpanded,
+                    onDismissRequest = { themeMenuExpanded = false }
+                ) {
+                    TaskHubThemeType.entries.forEach { theme ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clip(CircleShape)
+                                            .background(themeColorFor(theme))
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(getThemeLabel(theme, s))
+                                }
+                            },
+                            onClick = {
+                                appSettings.onThemeChanged(theme)
+                                themeMenuExpanded = false
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -768,9 +802,31 @@ private fun SettingsSection(
     }
 }
 
+/** String i18n del nombre de cada [TaskHubThemeType], usado en el dropdown de tema. */
+private fun getThemeLabel(theme: TaskHubThemeType, s: (String) -> String): String =
+    when (theme) {
+        TaskHubThemeType.DEFAULT -> s("theme_default")
+        TaskHubThemeType.NATURALEZA -> s("theme_naturaleza")
+        TaskHubThemeType.MINIMAL -> s("theme_minimal")
+        TaskHubThemeType.OCEANO -> s("theme_oceano")
+        TaskHubThemeType.ATARDECER -> s("theme_atardecer")
+        TaskHubThemeType.MIDNIGHT -> s("theme_midnight")
+    }
+
+/** Color representativo de cada [TaskHubThemeType], usado en el swatch del dropdown de tema. */
+private fun themeColorFor(theme: TaskHubThemeType): Color =
+    when (theme) {
+        TaskHubThemeType.DEFAULT -> Teal600
+        TaskHubThemeType.NATURALEZA -> Green600
+        TaskHubThemeType.MINIMAL -> MonoGray600
+        TaskHubThemeType.OCEANO -> OceanBlue600
+        TaskHubThemeType.ATARDECER -> SunsetPurple600
+        TaskHubThemeType.MIDNIGHT -> MidnightBlue500
+    }
+
 /**
- * Fila de opción con RadioButton reutilizada por los 3 selectores de esta
- * pantalla (tema, idioma, tema del widget) — antes eran tres composables
+ * Fila de opción con RadioButton reutilizada por los 2 selectores restantes
+ * de esta pantalla (idioma, tema del widget) — antes eran tres composables
  * idénticos letra por letra (ThemeOption/LanguageOption/WidgetThemeOption).
  */
 @Composable

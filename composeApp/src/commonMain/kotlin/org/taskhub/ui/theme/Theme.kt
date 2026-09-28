@@ -32,7 +32,13 @@ enum class TaskHubThemeType {
     /** Paleta verde/marrón ("Naturaleza"). */
     NATURALEZA,
     /** Paleta monocroma blanco/negro/grises. */
-    MINIMAL
+    MINIMAL,
+    /** Azul profundo + cian + arena cálida (profesional, calmado). */
+    OCEANO,
+    /** Púrpura + naranja + rosa (enérgico, atardecer). */
+    ATARDECER,
+    /** Azul noche + eléctrico + plata (premium, oscuro incluso en modo claro). */
+    MIDNIGHT
 }
 
 // ── Colores base ──────────────────────────────────────────
@@ -120,6 +126,128 @@ val MonoGray600 = Color(0xFF424242)
 val MonoGray800 = Color(0xFF212121)
 val MonoGray900 = Color(0xFF121212)
 val MonoBlack = Color(0xFF000000)
+
+// ── Océano colors (azul profundo + cian + arena) ──────────
+
+val OceanBlue50 = Color(0xFFE3F2FD)
+val OceanBlue100 = Color(0xFFBBDEFB)
+val OceanBlue200 = Color(0xFF90CAF9)
+val OceanBlue300 = Color(0xFF64B5F6)
+val OceanBlue400 = Color(0xFF42A5F5)
+val OceanBlue500 = Color(0xFF2196F3)
+val OceanBlue600 = Color(0xFF1E88E5)
+val OceanBlue700 = Color(0xFF1976D2)
+val OceanBlue800 = Color(0xFF1565C0)
+val OceanBlue900 = Color(0xFF0D47A1)
+
+val OceanCyan50 = Color(0xFFE0F7FA)
+val OceanCyan100 = Color(0xFFB2EBF2)
+val OceanCyan200 = Color(0xFF80DEEA)
+val OceanCyan300 = Color(0xFF4DD0E1)
+val OceanCyan400 = Color(0xFF26C6DA)
+val OceanCyan500 = Color(0xFF00BCD4)
+val OceanCyan600 = Color(0xFF00ACC1)
+val OceanCyan700 = Color(0xFF0097A7)
+val OceanCyan800 = Color(0xFF00838F)
+val OceanCyan900 = Color(0xFF006064)
+
+val OceanSand = Color(0xFFFAF3E7)
+val OceanSandDark = Color(0xFF15222E)
+
+// Variantes ajustadas para contraste WCAG AA (>=4.5:1 texto normal, >=3:1 no-textual)
+private val OceanOnSecondaryLightAA = Color(0xFF001A20) // blanco sobre OceanCyan700 daba 3.51:1 -> 5.12:1
+private val OceanOnTertiaryLightAA = Color(0xFF08243D) // blanco sobre OceanBlue500 daba 3.12:1 -> 5.05:1
+private val OceanSurfaceVariantLight = Color(0xFFF0E6D2)
+private val OceanOnSurfaceVariantLightAA = Color(0xFF45505A) // 6.65:1 sobre OceanSurfaceVariantLight
+private val OceanOutlineLight = Color(0xFF6B7680) // 4.20:1 sobre OceanSand (uso no-textual, umbral 3:1)
+private val OceanOutlineVariantLight = Color(0xFFD8CBAE)
+private val OceanOnPrimaryDarkAA = Color(0xFF0D2C54) // 6.30:1 sobre OceanBlue300
+private val OceanOnSecondaryDarkAA = Color(0xFF003940) // 6.89:1 sobre OceanCyan300
+private val OceanOnTertiaryDarkAA = Color(0xFF08243D) // 9.02:1 sobre OceanBlue200
+private val OceanOnSurfaceVariantDarkAA = Color(0xFFCAD6E0) // 10.93:1 sobre OceanSandDark
+private val OceanOutlineDarkAA = Color(0xFF8FB8DE) // 4.14:1 sobre OceanBlue900 (no-textual)
+private val OceanOutlineVariantDark = Color(0xFF2A4A75)
+
+// ── Atardecer colors (púrpura + naranja + rosa) ───────────
+
+val SunsetPurple50 = Color(0xFFF3E5F5)
+val SunsetPurple100 = Color(0xFFE1BEE7)
+val SunsetPurple200 = Color(0xFFCE93D8)
+val SunsetPurple300 = Color(0xFFBA68C8)
+val SunsetPurple400 = Color(0xFFAB47BC)
+val SunsetPurple500 = Color(0xFF9C27B0)
+val SunsetPurple600 = Color(0xFF8E24AA)
+val SunsetPurple700 = Color(0xFF7B1FA2)
+val SunsetPurple800 = Color(0xFF6A1B9A)
+val SunsetPurple900 = Color(0xFF4A148C)
+
+val SunsetOrange50 = Color(0xFFFFF3E0)
+val SunsetOrange100 = Color(0xFFFFE0B2)
+val SunsetOrange200 = Color(0xFFFFCC80)
+val SunsetOrange300 = Color(0xFFFFB74D)
+val SunsetOrange400 = Color(0xFFFFA726)
+val SunsetOrange500 = Color(0xFFFF9800)
+val SunsetOrange600 = Color(0xFFFB8C00)
+val SunsetOrange700 = Color(0xFFF57C00)
+val SunsetOrange800 = Color(0xFFEF6C00)
+val SunsetOrange900 = Color(0xFFE65100)
+
+val SunsetPink = Color(0xFFFF6FA5)
+val SunsetPinkDark = Color(0xFFC2185B)
+val SunsetCream = Color(0xFFFFF6EC)
+val SunsetCreamDark = Color(0xFF2A1F33)
+
+// Variantes ajustadas para contraste WCAG AA
+private val SunsetOnSecondaryLightAA = Color(0xFF3D0A00) // 6.25:1 sobre SunsetOrange700 (blanco daba 2.70:1)
+private val SunsetOnSecondaryContainerLightAA = Color(0xFF7A3400) // 7.14:1 sobre SunsetOrange100
+private val SunsetTertiaryContainerLight = Color(0xFFFFE0EC)
+private val SunsetSurfaceVariantLight = Color(0xFFF3E5DC)
+private val SunsetOnSurfaceVariantLightAA = Color(0xFF5A4A52) // 6.72:1 sobre SunsetSurfaceVariantLight
+private val SunsetOutlineLight = Color(0xFF8A7A82) // 3.79:1 sobre SunsetCream (no-textual)
+private val SunsetOutlineVariantLight = Color(0xFFD8C8CE)
+private val SunsetOnPrimaryDarkAA = Color(0xFF200530) // 5.24:1 sobre SunsetPurple300
+private val SunsetOnSecondaryDarkAA = Color(0xFF4A2800) // 7.61:1 sobre SunsetOrange300
+private val SunsetOnTertiaryDarkAA = Color(0xFF4A0022) // 6.14:1 sobre SunsetPink
+private val SunsetSecondaryContainerDarkAA = Color(0xFF7A3400)
+private val SunsetTertiaryContainerDarkAA = Color(0xFF8E0038)
+private val SunsetOnBackgroundDark = Color(0xFFF0E5F5)
+private val SunsetSurfaceVariantDark = Color(0xFF2E2038)
+private val SunsetOnSurfaceVariantDarkAA = Color(0xFFD8C8DE) // 9.59:1 sobre SunsetSurfaceVariantDark
+private val SunsetOutlineDarkAA = Color(0xFFC9A8D6) // 8.75:1 sobre background dark (no-textual)
+private val SunsetOutlineVariantDark = Color(0xFF4A3A56)
+
+// ── Midnight colors (azul noche + eléctrico + plata) ──────
+
+val MidnightNavy = Color(0xFF0B1120)
+val MidnightNavyLight = Color(0xFF141C30)
+val MidnightNavySurface = Color(0xFF10182A)
+val MidnightNavyCard = Color(0xFF1A2438)
+
+val MidnightBlue100 = Color(0xFFBBD6FF)
+val MidnightBlue200 = Color(0xFF8AB4FF)
+val MidnightBlue300 = Color(0xFF5C93FF)
+val MidnightBlue400 = Color(0xFF2E72FF)
+val MidnightBlue500 = Color(0xFF0052FF)
+val MidnightBlue600 = Color(0xFF0044D6)
+val MidnightBlue700 = Color(0xFF0036AD)
+val MidnightBlue800 = Color(0xFF002985)
+val MidnightBlue900 = Color(0xFF001C5C)
+
+val MidnightSilver50 = Color(0xFFF2F4F7)
+val MidnightSilver100 = Color(0xFFE1E5EB)
+val MidnightSilver200 = Color(0xFFC7CEDA)
+val MidnightSilver300 = Color(0xFFA9B3C4)
+val MidnightSilver400 = Color(0xFF8B96AC)
+val MidnightSilver500 = Color(0xFF707C94)
+val MidnightSilver600 = Color(0xFF5A6478)
+val MidnightSilver800 = Color(0xFF2A3040)
+
+// Variantes ajustadas para contraste WCAG AA
+private val MidnightOnTertiaryLight = Color(0xFF000000) // 4.97:1 sobre MidnightBlue400 (blanco daba 4.23:1)
+private val MidnightOnBackgroundLight = Color(0xFFF2F4F7)
+private val MidnightOnPrimaryDarkAA = Color(0xFF001238) // 6.18:1 sobre MidnightBlue300
+private val MidnightOnSecondaryDarkAA = Color(0xFF10182A) // 8.37:1 sobre MidnightSilver300
+private val MidnightOnTertiaryDarkAA = Color(0xFF001238) // 8.79:1 sobre MidnightBlue200
 
 // ── Default schemes ───────────────────────────────────────
 
@@ -331,6 +459,205 @@ private val MinimalDarkColorScheme = darkColorScheme(
     outlineVariant = MonoGray600,
 )
 
+// ── Océano schemes (azul + cian + arena) ──────────────────
+
+private val OceanoLightColorScheme = lightColorScheme(
+    primary = OceanBlue800,
+    onPrimary = Color.White,
+    primaryContainer = OceanBlue100,
+    onPrimaryContainer = OceanBlue900,
+
+    secondary = OceanCyan700,
+    onSecondary = OceanOnSecondaryLightAA,
+    secondaryContainer = OceanCyan100,
+    onSecondaryContainer = OceanCyan900,
+
+    tertiary = OceanBlue500,
+    onTertiary = OceanOnTertiaryLightAA,
+    tertiaryContainer = OceanBlue50,
+    onTertiaryContainer = OceanBlue800,
+
+    error = Color(0xFFBA1A1A),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+
+    background = OceanSand,
+    onBackground = Color(0xFF1A2733),
+    surface = OceanSand,
+    onSurface = Color(0xFF1A2733),
+    surfaceVariant = OceanSurfaceVariantLight,
+    onSurfaceVariant = OceanOnSurfaceVariantLightAA,
+
+    outline = OceanOutlineLight,
+    outlineVariant = OceanOutlineVariantLight,
+)
+
+private val OceanoDarkColorScheme = darkColorScheme(
+    primary = OceanBlue300,
+    onPrimary = OceanOnPrimaryDarkAA,
+    primaryContainer = OceanBlue800,
+    onPrimaryContainer = OceanBlue50,
+
+    secondary = OceanCyan300,
+    onSecondary = OceanOnSecondaryDarkAA,
+    secondaryContainer = OceanCyan900,
+    onSecondaryContainer = OceanCyan50,
+
+    tertiary = OceanBlue200,
+    onTertiary = OceanOnTertiaryDarkAA,
+    tertiaryContainer = OceanBlue700,
+    onTertiaryContainer = Color.White,
+
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+
+    background = OceanBlue900,
+    onBackground = OceanBlue50,
+    surface = OceanBlue900,
+    onSurface = OceanBlue50,
+    surfaceVariant = OceanSandDark,
+    onSurfaceVariant = OceanOnSurfaceVariantDarkAA,
+
+    outline = OceanOutlineDarkAA,
+    outlineVariant = OceanOutlineVariantDark,
+)
+
+// ── Atardecer schemes (púrpura + naranja + rosa) ──────────
+
+private val AtardecerLightColorScheme = lightColorScheme(
+    primary = SunsetPurple800,
+    onPrimary = Color.White,
+    primaryContainer = SunsetPurple100,
+    onPrimaryContainer = SunsetPurple900,
+
+    secondary = SunsetOrange700,
+    onSecondary = SunsetOnSecondaryLightAA,
+    secondaryContainer = SunsetOrange100,
+    onSecondaryContainer = SunsetOnSecondaryContainerLightAA,
+
+    tertiary = SunsetPinkDark,
+    onTertiary = Color.White,
+    tertiaryContainer = SunsetTertiaryContainerLight,
+    onTertiaryContainer = SunsetPinkDark,
+
+    error = Color(0xFFBA1A1A),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+
+    background = SunsetCream,
+    onBackground = Color(0xFF1A1028),
+    surface = SunsetCream,
+    onSurface = Color(0xFF1A1028),
+    surfaceVariant = SunsetSurfaceVariantLight,
+    onSurfaceVariant = SunsetOnSurfaceVariantLightAA,
+
+    outline = SunsetOutlineLight,
+    outlineVariant = SunsetOutlineVariantLight,
+)
+
+private val AtardecerDarkColorScheme = darkColorScheme(
+    primary = SunsetPurple300,
+    onPrimary = SunsetOnPrimaryDarkAA,
+    primaryContainer = SunsetPurple700,
+    onPrimaryContainer = SunsetPurple100,
+
+    secondary = SunsetOrange300,
+    onSecondary = SunsetOnSecondaryDarkAA,
+    secondaryContainer = SunsetSecondaryContainerDarkAA,
+    onSecondaryContainer = SunsetOrange100,
+
+    tertiary = SunsetPink,
+    onTertiary = SunsetOnTertiaryDarkAA,
+    tertiaryContainer = SunsetTertiaryContainerDarkAA,
+    onTertiaryContainer = SunsetTertiaryContainerLight,
+
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+
+    background = Color(0xFF1A1028),
+    onBackground = SunsetOnBackgroundDark,
+    surface = Color(0xFF1A1028),
+    onSurface = SunsetOnBackgroundDark,
+    surfaceVariant = SunsetSurfaceVariantDark,
+    onSurfaceVariant = SunsetOnSurfaceVariantDarkAA,
+
+    outline = SunsetOutlineDarkAA,
+    outlineVariant = SunsetOutlineVariantDark,
+)
+
+// ── Midnight schemes (azul noche + eléctrico + plata) ─────
+
+private val MidnightLightColorScheme = lightColorScheme(
+    primary = MidnightBlue500,
+    onPrimary = Color.White,
+    primaryContainer = MidnightNavyCard,
+    onPrimaryContainer = MidnightBlue200,
+
+    secondary = MidnightSilver600,
+    onSecondary = Color.White,
+    secondaryContainer = MidnightNavyLight,
+    onSecondaryContainer = MidnightSilver200,
+
+    tertiary = MidnightBlue400,
+    onTertiary = MidnightOnTertiaryLight,
+    tertiaryContainer = MidnightNavyCard,
+    onTertiaryContainer = MidnightBlue100,
+
+    error = Color(0xFFBA1A1A),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+
+    // Fondo oscuro incluso en modo claro: es la estética "premium" del tema.
+    background = MidnightNavy,
+    onBackground = MidnightOnBackgroundLight,
+    surface = MidnightNavySurface,
+    onSurface = MidnightOnBackgroundLight,
+    surfaceVariant = MidnightNavyLight,
+    onSurfaceVariant = MidnightSilver300,
+
+    outline = MidnightSilver500,
+    outlineVariant = MidnightSilver800,
+)
+
+private val MidnightDarkColorScheme = darkColorScheme(
+    primary = MidnightBlue300,
+    onPrimary = MidnightOnPrimaryDarkAA,
+    primaryContainer = MidnightBlue800,
+    onPrimaryContainer = MidnightBlue100,
+
+    secondary = MidnightSilver300,
+    onSecondary = MidnightOnSecondaryDarkAA,
+    secondaryContainer = MidnightSilver800,
+    onSecondaryContainer = MidnightSilver100,
+
+    tertiary = MidnightBlue200,
+    onTertiary = MidnightOnTertiaryDarkAA,
+    tertiaryContainer = MidnightBlue700,
+    onTertiaryContainer = MidnightBlue100,
+
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+
+    background = Color(0xFF03050A),
+    onBackground = MidnightSilver50,
+    surface = Color(0xFF03050A),
+    onSurface = MidnightSilver50,
+    surfaceVariant = MidnightNavyCard,
+    onSurfaceVariant = MidnightSilver200,
+
+    outline = MidnightSilver500,
+    outlineVariant = MidnightSilver800,
+)
+
 // ── Tipografía ────────────────────────────────────────────
 
 private val DefaultTypography = Typography()
@@ -367,6 +694,9 @@ fun TaskHubTheme(
         TaskHubThemeType.DEFAULT -> if (darkTheme) DefaultDarkColorScheme else DefaultLightColorScheme
         TaskHubThemeType.NATURALEZA -> if (darkTheme) NaturalezaDarkColorScheme else NaturalezaLightColorScheme
         TaskHubThemeType.MINIMAL -> if (darkTheme) MinimalDarkColorScheme else MinimalLightColorScheme
+        TaskHubThemeType.OCEANO -> if (darkTheme) OceanoDarkColorScheme else OceanoLightColorScheme
+        TaskHubThemeType.ATARDECER -> if (darkTheme) AtardecerDarkColorScheme else AtardecerLightColorScheme
+        TaskHubThemeType.MIDNIGHT -> if (darkTheme) MidnightDarkColorScheme else MidnightLightColorScheme
     }
 
     val semanticColors = if (darkTheme) DarkSemanticColors else LightSemanticColors
