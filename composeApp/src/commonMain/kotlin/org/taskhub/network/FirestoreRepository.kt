@@ -1132,7 +1132,8 @@ open class FirestoreRepository(
         householdId: String,
         fromMemberId: String,
         toMemberId: String,
-        amount: Int
+        amount: Int,
+        idempotencyKey: String = Uuid.random().toString()
     ): MemberRepository.DonateResult {
         PointsRules.validateDonateBasic(fromMemberId, toMemberId, amount)?.let {
             val reason = when (it) {
@@ -1151,7 +1152,7 @@ open class FirestoreRepository(
                     fromMemberId = fromMemberId,
                     toMemberId = toMemberId,
                     amount = amount,
-                    idempotencyKey = Uuid.random().toString()
+                    idempotencyKey = idempotencyKey
                 )
             )
             MemberRepository.DonateResult.Ok(
@@ -1295,7 +1296,8 @@ open class FirestoreRepository(
         householdId: String,
         taskId: String,
         memberId: String,
-        task: TaskResponse
+        task: TaskResponse,
+        idempotencyKey: String = Uuid.random().toString()
     ): TaskCompletionResult {
         // Invalidación de caché movida a `finally`: un timeout de red no
         // distingue "la llamada nunca llegó al servidor" de "sí se aplicó
@@ -1314,7 +1316,7 @@ open class FirestoreRepository(
                         taskId = taskId,
                         memberId = memberId,
                         expectedLastCompletedDate = task.lastCompletedDate,
-                        idempotencyKey = Uuid.random().toString()
+                        idempotencyKey = idempotencyKey
                     )
                 )
             } catch (e: CloudFunctionException) {
@@ -1501,7 +1503,8 @@ open class FirestoreRepository(
         taskId: String,
         task: TaskResponse,
         assignmentId: String,
-        assignment: TaskAssignmentResponse
+        assignment: TaskAssignmentResponse,
+        idempotencyKey: String = Uuid.random().toString()
     ): TaskAssignmentResponse {
         // Invalidación en `finally`: mismo motivo que [completeTask] — un
         // timeout no distingue "nunca llegó" de "se aplicó pero se perdió la
@@ -1514,7 +1517,7 @@ open class FirestoreRepository(
                         householdId = householdId,
                         taskId = taskId,
                         assignmentId = assignmentId,
-                        idempotencyKey = Uuid.random().toString()
+                        idempotencyKey = idempotencyKey
                     )
                 )
             } catch (e: CloudFunctionException) {
@@ -1703,7 +1706,8 @@ open class FirestoreRepository(
         householdId: String,
         rewardId: String,
         memberId: String,
-        pointsSpent: Int
+        pointsSpent: Int,
+        idempotencyKey: String = Uuid.random().toString()
     ): RewardRedemption {
         try {
             val result = cloudFunctionsClient.call<RedeemRewardRequest, RedeemRewardResponse>(
@@ -1712,7 +1716,7 @@ open class FirestoreRepository(
                     householdId = householdId,
                     rewardId = rewardId,
                     memberId = memberId,
-                    idempotencyKey = Uuid.random().toString()
+                    idempotencyKey = idempotencyKey
                 )
             )
             return RewardRedemption(

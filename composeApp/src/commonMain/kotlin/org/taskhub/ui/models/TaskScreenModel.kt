@@ -3,6 +3,7 @@
 // reasignar quién la hizo y sincronización best-effort con Google Calendar.
 // Ver el diagrama de arquitectura más abajo para cómo encaja con
 // [FirestoreRepository] y Firestore.
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 package org.taskhub.ui.models
 
 import cafe.adriel.voyager.core.model.ScreenModel
@@ -36,6 +37,7 @@ import org.taskhub.platform.logAnalyticsEvent
 import org.taskhub.platform.vibrate
 import org.taskhub.storage.SettingsStore
 import kotlinx.datetime.*
+import kotlin.uuid.Uuid
 
 /**
  * Arquitectura de la app Task Hub (para devs nuevos):
@@ -167,6 +169,18 @@ class TaskScreenModel(
     }
 
     private fun s(key: String) = AppStrings.get(key, settingsStore.getLanguage())
+
+    /**
+     * idempotencyKey pendiente por `taskId`, para reutilizar entre reintentos
+     * de [completeTask] de la MISMA acción lógica — sin esto, un reintento
+     * manual tras un error ambiguo (p.ej. timeout de red ya aplicado en
+     * servidor) generaba una clave NUEVA en cada llamada, así que el servidor
+     * lo trataba como una compleción distinta y podía duplicar los puntos
+     * otorgados. Se retira del mapa al iniciar la llamada y solo se vuelve a
+     * guardar si esa llamada falla, para que un éxito posterior arranque con
+     * clave nueva en la siguiente acción.
+     */
+    private val pendingIdempotencyKeys = mutableMapOf<String, String>()
 
     /** Ver [FirestoreRepository.isHouseholdOwner]. */
     suspend fun isHouseholdOwner(householdId: String): Boolean = repo.isHouseholdOwner(householdId)
@@ -565,6 +579,10 @@ class TaskScreenModel(
         if (_actionState.value == TaskActionState.Loading) return // evita doble-tap / doble suma de puntos
         completeTaskJob = screenModelScope.launch {
             _actionState.value = TaskActionState.Loading
+            // Reutiliza la clave del intento anterior si el último fallo para
+            // esta tarea fue ambiguo (ver comentario de [pendingIdempotencyKeys]);
+            // si no hay ninguna pendiente, es una acción nueva.
+            val idempotencyKey = pendingIdempotencyKeys.remove(taskId) ?: Uuid.random().toString()
             try {
                 // Resolución robusta del miembro: si la UI no lo ha establecido
                 // (p.ej. navegación directa al detalle desde Home o Calendario),
@@ -598,7 +616,8 @@ class TaskScreenModel(
                     householdId = householdId,
                     taskId = taskId,
                     memberId = memberId,
-                    task = task
+                    task = task,
+                    idempotencyKey = idempotencyKey
                 )
                 val completedAt = result.completedAt
                 pendingCompletion = pendingCompletion?.copy(completedAt = completedAt)
@@ -679,6 +698,14 @@ class TaskScreenModel(
                 AppLog.e("TaskScreenModel", "completeTask failed for task $taskId", e)
                 pendingCompletion = null
                 _undoState.value = null
+                // Reutilizar la misma clave en el próximo reintento de ESTA tarea:
+                // si el fallo fue ambiguo (p.ej. timeout tras aplicarse en
+                // servidor), evita que un segundo intento con clave nueva sea
+                // tratado como una compleción distinta y duplique los puntos. Si
+                // el fallo fue un conflicto real (otro dispositivo ya la
+                // completó) la clave nunca se reutiliza porque loadTasks()
+                // refresca el estado y el botón deja de estar disponible.
+                pendingIdempotencyKeys[taskId] = idempotencyKey
                 if (e is FirestoreRepository.TaskCompletionConflictException) {
                     // Mensaje vía AppStrings (no e.message, que viene fijo en
                     // español desde el repo) y recarga de la lista: el error
@@ -1306,6 +1333,9 @@ class TaskScreenModel(
         _isOffline.value = false
         _allTags.value = emptyList()
         _calendarActionState.value = CalendarActionState.Idle
+        // Al cambiar de hogar/pantalla no debe reintentarse una compleción de
+        // otro contexto con la clave pendiente de la anterior.
+        pendingIdempotencyKeys.clear()
     }
 
     // ── Google Calendar ──────────────────────────────────────

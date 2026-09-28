@@ -6,6 +6,7 @@
  * y las pantallas de recompensas ([org.taskhub.ui.screens.RewardListScreen],
  * [org.taskhub.ui.screens.CreateRewardScreen], [org.taskhub.ui.screens.MemberRewardScreen]).
  */
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 package org.taskhub.ui.models
 
 import cafe.adriel.voyager.core.model.ScreenModel
@@ -29,6 +30,7 @@ import org.taskhub.platform.vibrate
 import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.i18n.toUserMessage
+import kotlin.uuid.Uuid
 
 /** Estados de carga de la lista de miembros de un hogar. */
 sealed class MemberUiState {
@@ -104,6 +106,14 @@ class MemberScreenModel(
     }
 
     private fun s(key: String) = AppStrings.get(key, settingsStore.getLanguage())
+
+    /**
+     * idempotencyKey pendiente por clave lógica de acción (`"donate:hid:toId"`,
+     * `"redeem:rewardId"`), para reutilizar entre reintentos de la MISMA
+     * acción — ver el mismo mecanismo y motivo en
+     * [TaskScreenModel.pendingIdempotencyKeys].
+     */
+    private val pendingIdempotencyKeys = mutableMapOf<String, String>()
 
     private val _uiState = MutableStateFlow<MemberUiState>(MemberUiState.Idle)
     val uiState: StateFlow<MemberUiState> = _uiState.asStateFlow()
@@ -315,10 +325,14 @@ class MemberScreenModel(
         pointsSpent: Int
     ) {
         if (_rewardActionState.value == RewardActionState.Loading) return // evita doble-tap / doble descuento
+        val actionKey = "redeem:$rewardId"
         screenModelScope.launch {
             _rewardActionState.value = RewardActionState.Loading
+            // Reutiliza la clave del intento anterior si el último fallo para
+            // este canje fue ambiguo — ver [pendingIdempotencyKeys].
+            val idempotencyKey = pendingIdempotencyKeys.remove(actionKey) ?: Uuid.random().toString()
             try {
-                val redemption = repo.redeemReward(householdId, rewardId, memberId, pointsSpent)
+                val redemption = repo.redeemReward(householdId, rewardId, memberId, pointsSpent, idempotencyKey)
                 _rewardActionState.value = RewardActionState.Success(redemption)
                 buzz(HapticKind.SUCCESS)
                 // Reload members to refresh points
@@ -335,6 +349,9 @@ class MemberScreenModel(
                 buzz(HapticKind.ERROR)
             } catch (e: Exception) {
                 AppLog.e("MemberScreenModel", "redeemReward failed for reward $rewardId", e)
+                // Reutilizar la clave en el próximo reintento de ESTE canje — ver
+                // el mismo motivo en TaskScreenModel.completeTask.
+                pendingIdempotencyKeys[actionKey] = idempotencyKey
                 _rewardActionState.value = RewardActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "reward_error_redeeming")
                 )
@@ -411,16 +428,26 @@ class MemberScreenModel(
      */
     fun donatePoints(householdId: String, fromMemberId: String, toMemberId: String, amount: Int) {
         if (_donateActionState.value == DonateActionState.Loading) return
+        val actionKey = "donate:$householdId:$toMemberId"
         screenModelScope.launch {
             _donateActionState.value = DonateActionState.Loading
+            // Reutiliza la clave del intento anterior si la última donación a
+            // este miembro falló de forma ambigua — ver [pendingIdempotencyKeys].
+            val idempotencyKey = pendingIdempotencyKeys.remove(actionKey) ?: Uuid.random().toString()
             try {
-                when (val result = repo.donatePoints(householdId, fromMemberId, toMemberId, amount)) {
+                when (val result = repo.donatePoints(householdId, fromMemberId, toMemberId, amount, idempotencyKey)) {
                     is MemberRepository.DonateResult.Ok -> {
                         loadMembers(householdId)
                         _donateActionState.value = DonateActionState.Success(result.donorNewTotal)
                         buzz(HapticKind.SUCCESS)
                     }
                     is MemberRepository.DonateResult.Error -> {
+                        // Reutilizar la clave en el próximo reintento de ESTA donación
+                        // — ver el mismo motivo en TaskScreenModel.completeTask. No
+                        // duele reutilizarla también en errores de validación (sin
+                        // llamada de red, p.ej. saldo insuficiente): el servidor la
+                        // trataría igualmente como una operación nueva.
+                        pendingIdempotencyKeys[actionKey] = idempotencyKey
                         _donateActionState.value = DonateActionState.Error(donateErrorKey(result.reason))
                         buzz(HapticKind.ERROR)
                         // Panel v16, hallazgo I19: ver el mismo motivo en appreciateMember().
@@ -433,6 +460,7 @@ class MemberScreenModel(
                 throw e
             } catch (e: Exception) {
                 AppLog.e("MemberScreenModel", "donatePoints failed from $fromMemberId to $toMemberId", e)
+                pendingIdempotencyKeys[actionKey] = idempotencyKey
                 _donateActionState.value = DonateActionState.Error(e.toUserMessageKey("transfer_error_failed"))
                 buzz(HapticKind.ERROR)
             }
