@@ -237,6 +237,9 @@ class MemberScreenModel(
         _uiState.value = MemberUiState.Idle
         _lastCreatedMember.value = null
         _memberActionState.value = MemberActionState.Idle
+        // Al cambiar de hogar/pantalla no debe reintentarse una donación/canje
+        // de otro contexto con la clave pendiente del anterior.
+        pendingIdempotencyKeys.clear()
     }
 
     /** Limpia [lastCreatedMember] tras consumirlo (p.ej. tras navegar con el nuevo miembro). */

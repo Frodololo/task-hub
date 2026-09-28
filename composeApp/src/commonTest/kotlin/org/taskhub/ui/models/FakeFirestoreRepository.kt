@@ -138,7 +138,8 @@ class FakeFirestoreRepository(
         householdId: String,
         taskId: String,
         memberId: String,
-        task: TaskResponse
+        task: TaskResponse,
+        idempotencyKey: String
     ): TaskCompletionResult {
         completeTaskCalls += Triple(householdId, taskId, memberId)
         if (hangCompleteTask) completeTaskHangGate.await()
@@ -199,7 +200,8 @@ class FakeFirestoreRepository(
         taskId: String,
         task: TaskResponse,
         assignmentId: String,
-        assignment: TaskAssignmentResponse
+        assignment: TaskAssignmentResponse,
+        idempotencyKey: String
     ): TaskAssignmentResponse = assignment.copy(
         status = "completed",
         completedAt = 1_000L,

@@ -7,7 +7,6 @@
  */
 package org.taskhub.ui.models
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -19,6 +18,7 @@ import kotlinx.datetime.Clock
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.GoogleCalendarRepository
 import org.taskhub.network.models.TaskAssignmentResponse
+import org.taskhub.platform.bestEffort
 import org.taskhub.storage.SettingsStore
 
 /**
@@ -126,14 +126,10 @@ class CalendarSyncManagerImpl(
             // otra coroutine pudo haber terminado de crear y cachear el
             // calendario mientras esta esperaba, ver KDoc de [ensureCalendarMutex].
             settingsStore.getCalendarId(householdId)?.let { return@withLock it }
-            try {
+            bestEffort(null, "CalendarSyncManager.ensureCalendarId.createOrFind") {
                 val id = calendarRepo.ensureCalendar(accessToken, calendarName(householdName, isPersonal))
                 settingsStore.setCalendarId(householdId, id)
                 id
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
             }
         }
     }
@@ -150,19 +146,15 @@ class CalendarSyncManagerImpl(
         assignments: List<TaskAssignmentResponse>
     ) {
         if (!settingsStore.isCalendarSyncEnabled()) return
-        try {
+        bestEffort(Unit, "CalendarSyncManager.onTaskAssigned.sync") {
             val myMemberId = repo.resolveCurrentMember(householdId)
             val mine = assignments.filter { it.memberId == myMemberId && it.dueDate > 0 }
-            if (mine.isEmpty()) return
+            if (mine.isEmpty()) return@bestEffort
 
-            val token = authManager.ensureCalendarAccessToken() ?: return
-            val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return
-            val tasks = try {
+            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
+            val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return@bestEffort
+            val tasks = bestEffort(emptyList(), "CalendarSyncManager.onTaskAssigned.getTasks") {
                 repo.getTasks(householdId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                emptyList()
             }
 
             coroutineScope {
@@ -174,10 +166,6 @@ class CalendarSyncManagerImpl(
                     }
                 }.awaitAll()
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // Best-effort: se reintenta en el próximo reconcile.
         }
     }
 
@@ -204,15 +192,15 @@ class CalendarSyncManagerImpl(
         taskDescription: String
     ) {
         if (!settingsStore.isCalendarSyncEnabled()) return
-        try {
+        bestEffort(Unit, "CalendarSyncManager.onDueDateChanged.sync") {
             val myMemberId = repo.resolveCurrentMember(householdId)
-            if (assignment.memberId != myMemberId) return
+            if (assignment.memberId != myMemberId) return@bestEffort
 
-            val token = authManager.ensureCalendarAccessToken() ?: return
+            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
             val eventId = assignment.googleEventId
             if (eventId == null) {
-                if (newDueDate <= 0) return
-                val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return
+                if (newDueDate <= 0) return@bestEffort
+                val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return@bestEffort
                 val event = calendarRepo.createEvent(
                     accessToken = token,
                     calendarId = calendarId,
@@ -221,10 +209,10 @@ class CalendarSyncManagerImpl(
                     dueDateEpochMs = newDueDate
                 )
                 repo.updateAssignmentGoogleEventId(householdId, assignment.taskId, assignment.id, event.id)
-                return
+                return@bestEffort
             }
 
-            val calendarId = settingsStore.getCalendarId(householdId) ?: return
+            val calendarId = settingsStore.getCalendarId(householdId) ?: return@bestEffort
             if (newDueDate <= 0) {
                 calendarRepo.deleteEvent(token, calendarId, eventId)
                 repo.updateAssignmentGoogleEventId(householdId, assignment.taskId, assignment.id, null)
@@ -238,10 +226,6 @@ class CalendarSyncManagerImpl(
                     dueDateEpochMs = newDueDate
                 )
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // Best-effort: se reintenta en el próximo reconcile.
         }
     }
 
@@ -260,19 +244,15 @@ class CalendarSyncManagerImpl(
         val now = Clock.System.now().toEpochMilliseconds()
         val lastReconcileAt = settingsStore.getLastCalendarReconcileAt(householdId)
         if (now - lastReconcileAt < RECONCILE_THROTTLE_MS) return
-        try {
+        bestEffort(Unit, "CalendarSyncManager.reconcile.sync") {
             val myMemberId = repo.resolveCurrentMember(householdId)
             // Tareas cargadas UNA vez y reutilizadas tanto para
             // getAllAssignments(tasks) como para construir los eventos más
             // abajo — antes se pedían dos veces (una dentro de
             // getAllAssignments(), otra explícita) cuando había pendientes
             // (panel v7, #18).
-            val tasks = try {
+            val tasks = bestEffort(emptyList(), "CalendarSyncManager.reconcile.getTasks") {
                 repo.getTasks(householdId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                emptyList()
             }
             val assignments = repo.getAllAssignments(householdId, tasks)
             // Se marca "reconciliado" en cuanto se completa el fetch caro
@@ -285,10 +265,10 @@ class CalendarSyncManagerImpl(
                     it.googleEventId == null &&
                     it.status != "completed"
             }
-            if (pending.isEmpty()) return
+            if (pending.isEmpty()) return@bestEffort
 
-            val token = authManager.ensureCalendarAccessToken() ?: return
-            val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return
+            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
+            val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return@bestEffort
 
             coroutineScope {
                 pending.map { assignment ->
@@ -299,10 +279,6 @@ class CalendarSyncManagerImpl(
                     }
                 }.awaitAll()
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // Best-effort: se reintenta en el próximo reconcile.
         }
     }
 
@@ -322,7 +298,7 @@ class CalendarSyncManagerImpl(
         if (assignment.dueDate <= 0) return false
         val token = authManager.ensureCalendarAccessToken() ?: return false
         val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return false
-        return try {
+        return bestEffort(false, "CalendarSyncManager.syncNow.createEvent") {
             val event = calendarRepo.createEvent(
                 accessToken = token,
                 calendarId = calendarId,
@@ -332,10 +308,6 @@ class CalendarSyncManagerImpl(
             )
             repo.updateAssignmentGoogleEventId(householdId, assignment.taskId, assignment.id, event.id)
             true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            false
         }
     }
 
@@ -346,7 +318,7 @@ class CalendarSyncManagerImpl(
         assignment: TaskAssignmentResponse,
         tasks: List<org.taskhub.network.models.TaskResponse>
     ) {
-        try {
+        bestEffort(Unit, "CalendarSyncManager.createEventForAssignment.createEvent") {
             val task = tasks.find { it.id == assignment.taskId }
             val event = calendarRepo.createEvent(
                 accessToken = token,
@@ -356,30 +328,19 @@ class CalendarSyncManagerImpl(
                 dueDateEpochMs = assignment.dueDate
             )
             repo.updateAssignmentGoogleEventId(householdId, assignment.taskId, assignment.id, event.id)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // Best-effort: esta asignación se reintenta en el próximo reconcile.
         }
     }
 
     private suspend fun deleteEventForAssignment(householdId: String, assignment: TaskAssignmentResponse) {
         val eventId = assignment.googleEventId ?: return
-        try {
-            val calendarId = settingsStore.getCalendarId(householdId) ?: return
-            val token = authManager.ensureCalendarAccessToken() ?: return
-            try {
+        bestEffort(Unit, "CalendarSyncManager.deleteEventForAssignment.cleanup") {
+            val calendarId = settingsStore.getCalendarId(householdId) ?: return@bestEffort
+            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
+            // Puede que ya no exista (borrado a mano) — igualmente limpiamos el campo.
+            bestEffort(Unit, "CalendarSyncManager.deleteEventForAssignment.deleteEvent") {
                 calendarRepo.deleteEvent(token, calendarId, eventId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Puede que ya no exista (borrado a mano) — igualmente limpiamos el campo.
             }
             repo.updateAssignmentGoogleEventId(householdId, assignment.taskId, assignment.id, null)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // Best-effort: si falla, el evento huérfano queda en Calendar hasta el próximo intento.
         }
     }
 }
