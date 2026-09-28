@@ -480,11 +480,11 @@ class TaskScreenModel(
      */
     private suspend fun rollbackUnassignedTask(householdId: String, taskId: String) {
         // Best-effort: intentamos borrar la tarea igualmente aunque falle esto.
-        bestEffort(Unit, "TaskScreenModel") {
+        bestEffort(Unit, "TaskScreenModel.rollbackUnassignedTask.deleteAssignments") {
             repo.deleteAssignments(householdId, taskId)
         }
         // No crítico: ver KDoc de la función (limitación conocida).
-        bestEffort(Unit, "TaskScreenModel") {
+        bestEffort(Unit, "TaskScreenModel.rollbackUnassignedTask.deleteTask") {
             repo.deleteTask(householdId, taskId)
         }
     }
@@ -618,7 +618,7 @@ class TaskScreenModel(
                 // es un efecto secundario no crítico, nunca debe marcar la acción
                 // como error (eso invitaría a reintentar completeTask() y duplicar
                 // los puntos ya otorgados).
-                bestEffort(Unit, "TaskScreenModel") {
+                bestEffort(Unit, "TaskScreenModel.completeTask.cancelReminder") {
                     notificationScheduler.cancelReminder(taskId)
                 }
 
@@ -629,7 +629,7 @@ class TaskScreenModel(
                 // HouseholdScreen/PersonalSpaceScreen (`CalendarSyncManager.
                 // reconcile()`) para que apareciera en Calendar (panel v4,
                 // Experto 2 hallazgo #3 PROPUESTA aceptada).
-                bestEffort(Unit, "TaskScreenModel") {
+                bestEffort(Unit, "TaskScreenModel.completeTask.calendarSync") {
                     val currentAssignments = repo.getAssignments(householdId, taskId)
                     val myAssignment = currentAssignments.find { it.memberId == memberId }
                     if (myAssignment != null) {
@@ -645,7 +645,7 @@ class TaskScreenModel(
                 // lecturas extra de getMembers): la racha aún no se ha tocado
                 // en el servidor, así que memberBefore es el estado correcto de
                 // partida; el total de puntos post-premio se calcula en local.
-                bestEffort(Unit, "TaskScreenModel") {
+                bestEffort(Unit, "TaskScreenModel.completeTask.streakAndAchievements") {
                     if (memberBefore != null) {
                         val streakUpdated = updateMemberStreak(householdId, memberBefore)
                         val memberForAchievements = streakUpdated.copy(
@@ -662,7 +662,7 @@ class TaskScreenModel(
                 // el interstitial son efectos secundarios no críticos — un fallo
                 // aquí (analytics no inicializado, error interno de AdMob) no debe
                 // sobrescribir el TaskActionState.Success que ya se ha publicado.
-                bestEffort(Unit, "TaskScreenModel") {
+                bestEffort(Unit, "TaskScreenModel.completeTask.analyticsAndAd") {
                     logAnalyticsEvent("task_completed")
                     // Panel v16, hallazgo C5: nunca mostrar anuncios a perfiles
                     // infantiles (docs/guia-publicacion.md exige explícitamente
@@ -817,7 +817,7 @@ class TaskScreenModel(
                 // reasignación y no desbloquear el logro hasta su siguiente
                 // compleción propia. Best-effort, igual que en los otros dos
                 // flujos: un fallo aquí no debe pisar el Success ya publicado.
-                bestEffort(Unit, "TaskScreenModel") {
+                bestEffort(Unit, "TaskScreenModel.reassignTaskCompletion.checkAndAwardAchievements") {
                     val newMember = repo.getMembers(householdId).find { it.id == newMemberId }
                     if (newMember != null) {
                         checkAndAwardAchievements(householdId, newMember)
@@ -868,7 +868,7 @@ class TaskScreenModel(
                 // asignación de la siguiente ocurrencia regenerada — mismo
                 // motivo que en completeTask (panel v4, Experto 2 hallazgo
                 // #3 PROPUESTA aceptada).
-                bestEffort(Unit, "TaskScreenModel") {
+                bestEffort(Unit, "TaskScreenModel.completeAssignment.calendarSync") {
                     calendarSync.onTaskCompleted(householdId, assignment)
                     val regenerated = repo.getAssignments(householdId, taskId).filter { it.status == "assigned" }
                     if (regenerated.isNotEmpty()) {
@@ -880,7 +880,7 @@ class TaskScreenModel(
                 // antes esta función solo otorgaba puntos sin actualizar racha ni
                 // desbloquear logros, así que un miembro que solo completa tareas
                 // asignadas (recurrentes con rotación, p.ej.) nunca acumulaba racha.
-                bestEffort(Unit, "TaskScreenModel") {
+                bestEffort(Unit, "TaskScreenModel.completeAssignment.streakAndAchievements") {
                     if (memberBefore != null) {
                         val pointsAwarded = result.pointsAwarded ?: 0
                         val streakUpdated = updateMemberStreak(householdId, memberBefore)
@@ -948,7 +948,7 @@ class TaskScreenModel(
 
                 _detailState.value = TaskDetailUiState.Success(task, assignments, members)
 
-                val myMemberId = bestEffort(null, "TaskScreenModel") {
+                val myMemberId = bestEffort(null, "TaskScreenModel.loadTaskDetail.resolveCurrentMember") {
                     repo.resolveCurrentMember(householdId)
                 }
                 _currentMemberId.value = myMemberId
@@ -1211,7 +1211,7 @@ class TaskScreenModel(
         )
 
         for (achievementId in newlyUnlocked) {
-            bestEffort(Unit, "TaskScreenModel") {
+            bestEffort(Unit, "TaskScreenModel.checkAndAwardAchievements.addMemberAchievement") {
                 repo.addMemberAchievement(householdId, member.id, achievementId)
             }
         }
@@ -1386,7 +1386,7 @@ class TaskScreenModel(
     /** Tras asignar/reasignar: crea eventos para las asignaciones mías con fecha. */
     private suspend fun syncCalendarOnAssigned(householdId: String, assignments: List<TaskAssignmentResponse>) {
         // Best-effort: se reintenta en el próximo reconcile.
-        bestEffort(Unit, "TaskScreenModel") {
+        bestEffort(Unit, "TaskScreenModel.syncCalendarOnAssigned") {
             val household = repo.getHousehold(householdId)
             calendarSync.onTaskAssigned(householdId, household.name, household.isPersonal, assignments)
         }
@@ -1395,7 +1395,7 @@ class TaskScreenModel(
     /** Antes de desasignar/borrar: borra los eventos de Calendar vinculados a las asignaciones actuales. */
     private suspend fun syncCalendarOnUnassigned(householdId: String, taskId: String) {
         // Best-effort: el evento huérfano queda hasta el próximo reconcile.
-        bestEffort(Unit, "TaskScreenModel") {
+        bestEffort(Unit, "TaskScreenModel.syncCalendarOnUnassigned") {
             val assignments = repo.getAssignments(householdId, taskId)
             for (assignment in assignments) {
                 calendarSync.onTaskUnassigned(householdId, assignment)

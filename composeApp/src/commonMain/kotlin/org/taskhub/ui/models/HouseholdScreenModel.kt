@@ -312,7 +312,7 @@ class HouseholdScreenModel(
                 // aceptado: es limpieza best-effort, no una garantía de
                 // borrado (tarjeta kanban "Paginación
                 // getMessages/getNotifications", 2026-09-13).
-                bestEffort(Unit, "HouseholdScreenModel") {
+                bestEffort(Unit, "HouseholdScreenModel.loadMessages.purgeOldMessages") {
                     repo.purgeOldMessages(householdId, messages)
                 }
             } catch (e: CancellationException) {

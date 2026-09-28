@@ -278,14 +278,14 @@ class GoogleAuthManager(
         _state.value = GoogleAuthState.SignedOut
         scope.launch {
             // No crítico: la caché se autocorrige en la siguiente resolución.
-            bestEffort(Unit, "GoogleAuthManager") {
+            bestEffort(Unit, "GoogleAuthManager.signOut.invalidateAllCurrentMembers") {
                 repo.invalidateAllCurrentMembers()
             }
         }
         if (uidBeingSignedOut != null) {
             scope.launch {
                 // No crítico: el token se sobrescribirá en el próximo login de esa cuenta.
-                bestEffort(Unit, "GoogleAuthManager") {
+                bestEffort(Unit, "GoogleAuthManager.signOut.clearFcmToken") {
                     repo.clearFcmToken(uidBeingSignedOut)
                 }
             }
@@ -369,7 +369,7 @@ class GoogleAuthManager(
         if (myId != null) {
             // No crítico: el perfil global huérfano no es un dato con
             // identidad reclamable sin la cuenta que acabamos de borrar.
-            bestEffort(Unit, "GoogleAuthManager") {
+            bestEffort(Unit, "GoogleAuthManager.deleteAccount.deleteUserProfile") {
                 repo.deleteUserProfile(myId)
             }
         }
@@ -377,7 +377,7 @@ class GoogleAuthManager(
             repo.deleteFirebaseAccount()
             if (settingsStore.hasGoogleLinked()) {
                 // No crítico: el access token en sí caduca solo en ~1h.
-                bestEffort(Unit, "GoogleAuthManager") {
+                bestEffort(Unit, "GoogleAuthManager.deleteAccount.revokeGoogleCalendarAccess") {
                     revokeGoogleCalendarAccess()
                 }
             }

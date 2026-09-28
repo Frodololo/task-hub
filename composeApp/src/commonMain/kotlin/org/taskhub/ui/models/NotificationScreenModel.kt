@@ -104,7 +104,7 @@ class NotificationScreenModel(
                 // colección completa del HOGAR, no solo las de este miembro)
                 // cargada aquí, así que no hace falta un segundo fetch (ronda
                 // de deuda aplicable 2026-09-12, punto B9).
-                bestEffort(Unit, "NotificationScreenModel") {
+                bestEffort(Unit, "NotificationScreenModel.loadNotifications.purgeOldNotifications") {
                     repo.purgeOldNotifications(householdId, all)
                 }
             } catch (e: CancellationException) {
@@ -135,7 +135,7 @@ class NotificationScreenModel(
     fun markAsRead(householdId: String, notificationId: String) {
         screenModelScope.launch {
             // Non-critical, ignore failures.
-            bestEffort(Unit, "NotificationScreenModel") {
+            bestEffort(Unit, "NotificationScreenModel.markAsRead") {
                 repo.markNotificationRead(householdId, notificationId)
                 // Update local state
                 val current = _uiState.value
@@ -161,7 +161,7 @@ class NotificationScreenModel(
     fun refreshUnreadCount(householdId: String, memberId: String) {
         screenModelScope.launch {
             // Ignore polling errors: background refresh, not worth interrupting the user.
-            bestEffort(Unit, "NotificationScreenModel") {
+            bestEffort(Unit, "NotificationScreenModel.refreshUnreadCount") {
                 val all = repo.getNotifications(householdId, limit = MAX_POLLED_NOTIFICATIONS)
                 val unread = all.count { it.memberId == memberId && !it.read }
                 _unreadCount.value = unread

@@ -151,7 +151,7 @@ class TaskCommentsScreenModel(
      * cual, sin unificarlas (fuera de alcance de esta pasada de comentarios).
      */
     private suspend fun resolveCurrentMemberName(householdId: String, memberId: String): String {
-        return bestEffort(s("profile_default_name"), "TaskCommentsScreenModel") {
+        return bestEffort(s("profile_default_name"), "TaskCommentsScreenModel.resolveCurrentMemberName") {
             val member = repo.getMembers(householdId).find { it.id == memberId }
             member?.displayName?.takeIf { it.isNotBlank() } ?: s("task_comment_default_author")
         }

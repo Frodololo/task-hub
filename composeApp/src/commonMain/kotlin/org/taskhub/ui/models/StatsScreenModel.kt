@@ -114,7 +114,7 @@ class StatsScreenModel(
                     // pantalla que ya trae la colección completa de taskHistory,
                     // así que no hace falta un segundo fetch para decidir qué
                     // purgar (ronda de deuda aplicable 2026-09-12, punto B9).
-                    bestEffort(Unit, "StatsScreenModel") {
+                    bestEffort(Unit, "StatsScreenModel.loadStats.purgeOldTaskHistory") {
                         repo.purgeOldTaskHistory(householdId, history)
                     }
                 } else {
