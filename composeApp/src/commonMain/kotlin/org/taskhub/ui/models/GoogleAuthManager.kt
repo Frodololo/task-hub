@@ -545,7 +545,8 @@ class GoogleAuthManager(
                 householdName = household.name,
                 inviteCode = household.inviteCode,
                 isPersonal = household.isPersonal,
-                spaceType = household.spaceType
+                spaceType = household.spaceType,
+                emoji = household.emoji
             )
         }
     }

@@ -435,9 +435,10 @@ open class FirestoreRepository(
     suspend fun createHousehold(
         name: String,
         isPersonal: Boolean = false,
-        spaceType: SpaceType = SpaceType.HOME
+        spaceType: SpaceType = SpaceType.HOME,
+        emoji: String? = null
     ): HouseholdResponse =
-        householdRepository.createHousehold(name = name, isPersonal = isPersonal, spaceType = spaceType)
+        householdRepository.createHousehold(name = name, isPersonal = isPersonal, spaceType = spaceType, emoji = emoji)
 
     /**
      * Obtiene (o crea) el espacio Personal del usuario actual con un ID DETERMINISTA

@@ -88,7 +88,7 @@ fun HouseholdTaskSection(
                 }
                 Text(
                     text = if (household.isPersonal) household.name
-                           else "${household.spaceType.emoji} ${household.name}",
+                           else "${household.emoji ?: household.spaceType.emoji} ${household.name}",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)

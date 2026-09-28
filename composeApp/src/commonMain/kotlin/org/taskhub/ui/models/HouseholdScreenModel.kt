@@ -95,7 +95,7 @@ class HouseholdScreenModel(
     fun appreciationRemaining(member: MemberResponse): Int = repo.appreciationRemaining(member)
 
     /** Crea un hogar nuevo con [name] y [spaceType], y lo guarda como hogar actual del usuario. */
-    fun createHousehold(name: String, spaceType: SpaceType = SpaceType.HOME) {
+    fun createHousehold(name: String, spaceType: SpaceType = SpaceType.HOME, emoji: String? = null) {
         // Panel v16 (2026-09-24), hallazgo QA: `createHousehold` NO es
         // idempotente (cada llamada crea un documento Firestore nuevo con ID
         // autogenerado) — era la única mutación del código sin esta guarda
@@ -107,8 +107,8 @@ class HouseholdScreenModel(
         screenModelScope.launch {
             _uiState.value = HouseholdUiState.Loading
             try {
-                val household = repo.createHousehold(name, spaceType = spaceType)
-                householdStore.saveHousehold(household.id, household.name, household.inviteCode, spaceType = household.spaceType)
+                val household = repo.createHousehold(name, spaceType = spaceType, emoji = emoji)
+                householdStore.saveHousehold(household.id, household.name, household.inviteCode, spaceType = household.spaceType, emoji = household.emoji)
                 authManager.syncHouseholdsToCloud()
                 logAnalyticsEvent("household_created")
                 _uiState.value = HouseholdUiState.Success(household)
@@ -138,7 +138,7 @@ class HouseholdScreenModel(
             try {
                 val household = repo.joinHousehold(inviteCode)
 
-                householdStore.saveHousehold(household.id, household.name, household.inviteCode, spaceType = household.spaceType)
+                householdStore.saveHousehold(household.id, household.name, household.inviteCode, spaceType = household.spaceType, emoji = household.emoji)
 
                 // Si ya somos miembros (con cualquiera de nuestras identidades),
                 // no volvemos a crear perfil: navegamos directo al hogar.

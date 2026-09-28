@@ -23,7 +23,9 @@ data class SavedHousehold(
     val inviteCode: String,
     /** True si es el espacio "Personal" auto-creado (sin invitaciones). */
     val isPersonal: Boolean = false,
-    val spaceType: SpaceType = SpaceType.HOME
+    val spaceType: SpaceType = SpaceType.HOME,
+    /** Emoji elegido manualmente por el creador del hogar. `null` = usar el de [spaceType]. */
+    val emoji: String? = null
 )
 
 /**
@@ -43,7 +45,8 @@ class HouseholdStore(private val settings: Settings) {
         householdName: String,
         inviteCode: String,
         isPersonal: Boolean = false,
-        spaceType: SpaceType = SpaceType.HOME
+        spaceType: SpaceType = SpaceType.HOME,
+        emoji: String? = null
     ) {
         val current = getSavedHouseholds().toMutableList()
         val existing = current.indexOfFirst { it.id == householdId }
@@ -52,7 +55,8 @@ class HouseholdStore(private val settings: Settings) {
             name = householdName,
             inviteCode = inviteCode,
             isPersonal = isPersonal,
-            spaceType = spaceType
+            spaceType = spaceType,
+            emoji = emoji
         )
         if (existing >= 0) {
             current[existing] = entry

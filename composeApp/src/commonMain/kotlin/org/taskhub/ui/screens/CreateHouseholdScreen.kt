@@ -6,6 +6,15 @@
  */
 package org.taskhub.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,13 +26,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.taskhub.ui.components.shouldReduceMotion
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -58,7 +70,15 @@ class CreateHouseholdScreen : Screen {
 
         var householdName by remember { mutableStateOf("") }
         var selectedType by remember { mutableStateOf(SpaceType.HOME) }
+        // `null` = sin elección manual, se usa el emoji del SpaceType seleccionado.
+        var customEmoji by remember { mutableStateOf<String?>(null) }
         val focusManager = LocalFocusManager.current
+
+        val emojiOptions = remember {
+            listOf("🧑", "👩", "👨", "👦", "👧", "🧒", "🐱", "🐶", "🐼", "🦊", "🐸", "🐵",
+                   "🌟", "🔥", "💎", "🎮", "📚", "🎨", "⚽", "🍕", "☕", "🦸", "🧙", "🤖")
+        }
+        val effectiveEmoji = customEmoji ?: selectedType.emoji
 
         LaunchedEffect(Unit) {
             model.reset()
@@ -157,6 +177,75 @@ class CreateHouseholdScreen : Screen {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                Text(
+                    text = s("create_household_emoji_label"),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                var showEmojiGrid by remember { mutableStateOf(false) }
+                val reduceMotion = shouldReduceMotion()
+                OutlinedButton(
+                    onClick = { showEmojiGrid = !showEmojiGrid },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (customEmoji != null)
+                            s("create_household_emoji_selected").replace("%s", effectiveEmoji)
+                        else
+                            s("create_household_choose_emoji")
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = showEmojiGrid,
+                    enter = if (reduceMotion) EnterTransition.None else fadeIn() + expandVertically(),
+                    exit = if (reduceMotion) ExitTransition.None else fadeOut() + shrinkVertically()
+                ) {
+                    // Grid de 6 columnas (mismo patrón que EditProfileScreen).
+                    val rows = emojiOptions.chunked(6)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rows.forEach { row ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                row.forEach { emoji ->
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .semantics {
+                                                contentDescription = s("edit_profile_emoji_content_desc").replace("%s", emoji)
+                                                selected = effectiveEmoji == emoji
+                                            }
+                                            .clickable(role = Role.Button) {
+                                                customEmoji = emoji
+                                                showEmojiGrid = false
+                                            },
+                                        shape = MaterialTheme.shapes.medium,
+                                        color = if (effectiveEmoji == emoji)
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        else
+                                            MaterialTheme.colorScheme.surfaceVariant,
+                                        border = if (effectiveEmoji == emoji)
+                                            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                        else null
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(emoji, style = MaterialTheme.typography.titleLarge)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 OutlinedTextField(
                     value = householdName,
                     onValueChange = { householdName = it },
@@ -176,7 +265,7 @@ class CreateHouseholdScreen : Screen {
                 Button(
                     onClick = {
                         focusManager.clearFocus()
-                        model.createHousehold(householdName.trim(), selectedType)
+                        model.createHousehold(householdName.trim(), selectedType, customEmoji)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
