@@ -9,6 +9,7 @@ import platform.Security.kSecRandomDefault
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
+import platform.UIKit.popoverPresentationController
 
 /**
  * Implementación iOS del `expect` [shareText] (`platform/Platform.kt`) con el
@@ -18,6 +19,7 @@ import platform.UIKit.UIViewController
  * (no acepta asunto/título como tal, a diferencia del Intent de Android) —
  * se ignora, igual que en wasmJs.
  */
+@OptIn(ExperimentalForeignApi::class)
 actual fun shareText(text: String, title: String) {
     val rootViewController = topMostViewController() ?: return
     // Cast documentado de Kotlin/Native: kotlin.String es toll-free-bridged a
@@ -78,37 +80,44 @@ actual fun updateWidgetPendingTasks(taskList: String) {
  * Implementación iOS del `expect` [launchGoogleSignIn] (`platform/Platform.kt`).
  *
  * Sin SDK de Google (no se añade GIDSignIn ni Firebase SDK): se abre Safari
- * con la URL de autorización OAuth 2.0 de Google pidiendo un `id_token`
- * directamente (implicit flow), usando el client ID de tipo iOS
+ * con la URL de autorización OAuth 2.0 de Google (authorization-code + PKCE,
+ * [GoogleIosSignInHelper]), usando el client ID de tipo iOS
  * ([GOOGLE_IOS_CLIENT_ID]). El callback llega por URL scheme
- * ([GOOGLE_IOS_REVERSED_CLIENT_ID]) y lo procesa Swift en
- * `ContentView.swift` (`onOpenURL`), que publica el resultado aquí mismo
- * vía [GoogleSignInResultHolder] — este método NO bloquea ni resuelve el
- * resultado, solo lanza la URL. Único caso en el que sí publica resultado:
- * si `openURL` falla al instante (Safari no se pudo abrir), para no dejar
- * el flujo colgado en SigningIn.
+ * ([GOOGLE_IOS_REVERSED_CLIENT_ID]) y lo procesa `ContentView.swift`
+ * (`onOpenURL`), que lo reenvía a [GoogleIosSignInHelper.processCallback] —
+ * este método NO bloquea ni resuelve el resultado, solo lanza la URL. Único
+ * caso en el que sí publica resultado directamente: si `openURL` falla al
+ * instante (Safari no se pudo abrir), para no dejar el flujo colgado en
+ * SigningIn.
+ *
+ * Se usó antes el flujo implícito (`response_type=id_token` directo, sin
+ * `code`): Google lo rechaza con `Error 400: unsupported_response_type` para
+ * clientes OAuth de tipo iOS (deprecado por Google, no es un bug de esta
+ * app) — de ahí el authorization-code + PKCE de [GoogleIosSignInHelper].
  */
 actual fun launchGoogleSignIn() {
-    val nonce = (1..32).joinToString("") { secureRandomInt(16).toString(16) }
-    val redirectUri = "$GOOGLE_IOS_REVERSED_CLIENT_ID:/oauth2redirect"
-    val authUrl = "https://accounts.google.com/o/oauth2/v2/auth" +
-        "?client_id=$GOOGLE_IOS_CLIENT_ID" +
-        "&redirect_uri=$redirectUri" +
-        "&response_type=id_token" +
-        "&scope=openid%20email%20profile" +
-        "&nonce=$nonce" +
-        "&prompt=select_account"
+    val authUrl = GoogleIosSignInHelper.buildAuthorizationUrl()
+    // NSURL(string:) no es nullable en este binding de Kotlin/Native
+    // (a diferencia del inicializador failable de Swift `NSURL(string:)?`).
     val url = NSURL(string = authUrl)
-    // Se usa la variante síncrona (deprecada desde iOS 10, pero todavía
-    // soportada) de `openURL` en vez de la moderna con `options`/
-    // `completionHandler`: su firma de interop con Kotlin/Native no se ha
-    // podido validar en este entorno (sin Xcode/klibs de iOS disponibles) y
-    // esta variante es sencilla y de comportamiento bien conocido. El valor
-    // de retorno indica si Safari pudo abrirse, no si el login tuvo éxito.
-    val opened = url != null && UIApplication.sharedApplication.openURL(url)
-    if (!opened) {
-        GoogleSignInResultHolder.setResult("")
-    }
+    // La variante síncrona de un solo parámetro (`openURL(url)`, deprecada
+    // desde iOS 10) dejó de abrir Safari en SDKs recientes: iOS la
+    // "hard-failea" devolviendo `false` siempre, sin ni intentar abrir la
+    // URL (log de sistema: "BUG IN CLIENT OF UIKIT: ... Force returning
+    // false (NO)"). Se usa la variante moderna con `completionHandler`; el
+    // booleano que recibe indica si Safari pudo abrirse, no si el login
+    // tuvo éxito — solo publicamos resultado aquí cuando falla, para no
+    // dejar el flujo colgado en SigningIn.
+    UIApplication.sharedApplication.openURL(
+        url = url,
+        options = emptyMap<Any?, Any>(),
+        completionHandler = { opened ->
+            if (!opened) {
+                GoogleIosSignInHelper.clearPending()
+                GoogleSignInResultHolder.setResult("")
+            }
+        },
+    )
 }
 
 /**
