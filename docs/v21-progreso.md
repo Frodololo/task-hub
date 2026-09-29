@@ -78,7 +78,65 @@ archivos (mismo conteo que v20 pero composición distinta: salieron
 desde v20), `TaskScreenModel.completeTask` en 161 líneas (creció, coincide
 con el hallazgo de Arquitectura).
 
+## Oleada B (5 especialistas, completada)
+
+### Estética / UI Material3
+Los 6 `ColorScheme` (3 nuevos + 3 existentes) completos y coherentes.
+Hallazgo nuevo: `SemanticColors.info` (0xFF1565C0) coincide exactamente con
+`OceanBlue800` (primary de Océano) — pierde distinción semántica en ese tema.
+Tema Medianoche usa fondo oscuro incluso en modo "claro", lo que puede
+desalinear los iconos de la barra de estado (`enableEdgeToEdge()` sigue el
+modo del sistema, no el tema de la app). Inconsistencia de patrón: el
+dropdown nuevo de Tema convive con `RadioOptionRow` para Idioma/Widget en el
+mismo `SettingsSheet`. Selector de emoji es réplica fiel de
+`EditProfileScreen.kt`, sin discrepancias.
+
+### Accesibilidad
+Contraste WCAG de los 3 temas nuevos verificado independientemente (34/34
+pares medidos, mínimo 4.97:1 texto/3.79:1 no-textual) — todos pasan AA. Sin
+regresiones nuevas. Auto-relleno de nombre Google sin `liveRegion` (el
+usuario no se entera si no enfoca el campo) — SIGUE ABIERTO/PROPUESTA. Botón
+de desplegar grid de emoji sin `expanded` state — heredado de
+`EditProfileScreen.kt`, no introducido en esta ronda.
+
+### UX
+Auto-relleno sin indicio visual de que el campo se rellenó solo (bajo
+impacto, editable). Selector de emoji: botón cerrado dice "Elegir emoji" en
+vez de mostrar el emoji efectivo por defecto. Dropdown de 6 temas con
+preview de color, cambio instantáneo sin reinicio — buena UX. **Hallazgo
+real**: `hasGoogleLinked` (flag persistido) nunca se degrada si
+`ensureCalendarAccessToken()` falla de forma persistente (token revocado) —
+el usuario puede creer que su Calendar sigue sincronizado cuando lleva
+tiempo fallando en silencio vía `bestEffort`. Hogar fantasma / deep link sin
+autorización: confirmado sin cambios (archivos no tocados en esta ventana).
+
+### Rendimiento
+Sin hallazgos en ningún punto. `groupTasksByStatus` es un *move* byte-idéntico
+con la misma memoización (`remember` con las mismas keys). `pendingIdempotencyKeys`
+correctamente confinado a `screenModelScope`, sin necesidad de estructura
+thread-safe. Grid de emoji (24 items, no lazy) es correcto por tamaño y por
+vivir dentro de `AnimatedVisibility`. Los 12 `ColorScheme` son `val`
+top-level, sin reconstrucción en recomposición. Logging de `bestEffort` sin
+coste en el camino feliz.
+
+### Seguridad / AppSec
+Sin hallazgos explotables. `SecureStore.wasmJs.kt` (fix build web): el
+roundtrip `ByteArray↔String` vía `charCodeAt`/`fromCharCode` no corrompe
+bytes (0-255 sin signo, todo en JS puro) — aumenta copias transitorias de la
+clave en memoria JS, higiene menor sin cambio de modelo de amenaza.
+`firestore.rules`: confirmado que `households/{hid}` no valida tipo/longitud
+de NINGÚN campo (ni `name` ni ahora `emoji`) — deuda preexistente documentada
+por primera vez explícitamente, severidad baja. `displayName` de Google se
+persiste en texto plano (correcto, no es secreto, mismo patrón que
+email/uid). `idempotencyKey` sigue usando `Uuid.random()` CSPRNG; los únicos
+call-sites reales nunca aceptan input de usuario. Nota colateral (no de esta
+ronda): `withIdempotency` no valida que `functionName` coincida en el replay
+— autolesión posible, no fuga entre usuarios.
+
 ## Siguiente paso
-Oleada B (5 especialistas): UI/Material3, Accesibilidad, UX, Rendimiento,
-Seguridad/AppSec. Luego oleada C (1): Cobertura de tests, que sintetiza los
-huecos identificados por las 10 anteriores.
+Oleada C (1 especialista): Cobertura de tests, sintetizando los huecos
+identificados por las 10 anteriores (completeAssignment sin idempotencyKey
+sin test, hasGoogleLinked sin degradar, todayStartEpoch intestable, emoji
+"" edge case, etc.). Luego: aplicar los [APLICA YA] seguros, compilar el
+informe final `docs/review-panel-expertos-2026-09-29-v21.md` y verificación
+final.
