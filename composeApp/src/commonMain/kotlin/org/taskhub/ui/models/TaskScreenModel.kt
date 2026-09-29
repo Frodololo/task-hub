@@ -46,8 +46,8 @@ import kotlin.uuid.Uuid
  * │  UI (Voyager Screens)                                   │
  * │  TaskListScreen, HouseholdScreen, CreateTaskScreen...    │
  * │  → Observan StateFlows del ScreenModel                  │
- * │  → Toda la lógica de filtro/agrupación/vencimiento      │
- * │    está en TaskListScreen.kt (funciones privadas)       │
+ * │  → La lógica de filtro/agrupación/vencimiento vive en   │
+ * │    ui/components/TaskListRules.kt (sin dependencias UI) │
  * └────────────┬─────────────────────────────────────────────┘
  *              │
  * ┌────────────▼─────────────────────────────────────────────┐

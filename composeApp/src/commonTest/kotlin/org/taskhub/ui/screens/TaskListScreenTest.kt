@@ -1,6 +1,8 @@
 package org.taskhub.ui.screens
 
 import org.taskhub.network.models.TaskResponse
+import org.taskhub.ui.components.TaskWithStatus
+import org.taskhub.ui.components.groupTasksByStatus
 import org.taskhub.ui.models.TaskSort
 import kotlin.test.Test
 import kotlin.test.assertEquals

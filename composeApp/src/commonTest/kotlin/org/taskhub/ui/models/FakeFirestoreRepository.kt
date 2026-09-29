@@ -61,6 +61,8 @@ class FakeFirestoreRepository(
     val createTaskCalls = mutableListOf<String>()
     val assignTaskCalls = mutableListOf<List<String>>()
     val completeTaskCalls = mutableListOf<Triple<String, String, String>>()
+    /** `idempotencyKey` recibido en cada llamada a [completeTask], en orden — ver `TaskScreenModelTest` (contrato de idempotencia). */
+    val completeTaskIdempotencyKeys = mutableListOf<String>()
     val undoTaskCompletionCalls = mutableListOf<Long>()
     val updateMemberStreakCalls = mutableListOf<Int>()
     val addMemberAchievementCalls = mutableListOf<String>()
@@ -142,6 +144,7 @@ class FakeFirestoreRepository(
         idempotencyKey: String
     ): TaskCompletionResult {
         completeTaskCalls += Triple(householdId, taskId, memberId)
+        completeTaskIdempotencyKeys += idempotencyKey
         if (hangCompleteTask) completeTaskHangGate.await()
         completeTaskError?.let { throw it }
         return completeTaskResult
