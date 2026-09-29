@@ -43,6 +43,7 @@ class FakeFirestoreRepository(
     var getTasksError: Throwable? = null
     var completeTaskResult = TaskCompletionResult(completedAt = 1_000L, pointsAwarded = 10, onTime = true)
     var completeTaskError: Throwable? = null
+    var completeAssignmentError: Throwable? = null
 
     /** Si es `true`, [getTask] se queda colgada indefinidamente — usado para simular una llamada "en vuelo" y poder testear guards anti-doble-tap sin condiciones de carrera reales. */
     var hangGetTask: Boolean = false
@@ -63,6 +64,8 @@ class FakeFirestoreRepository(
     val completeTaskCalls = mutableListOf<Triple<String, String, String>>()
     /** `idempotencyKey` recibido en cada llamada a [completeTask], en orden — ver `TaskScreenModelTest` (contrato de idempotencia). */
     val completeTaskIdempotencyKeys = mutableListOf<String>()
+    /** `idempotencyKey` recibido en cada llamada a [completeAssignment], en orden — mismo contrato que [completeTaskIdempotencyKeys]. */
+    val completeAssignmentIdempotencyKeys = mutableListOf<String>()
     val undoTaskCompletionCalls = mutableListOf<Long>()
     val updateMemberStreakCalls = mutableListOf<Int>()
     val addMemberAchievementCalls = mutableListOf<String>()
@@ -205,12 +208,16 @@ class FakeFirestoreRepository(
         assignmentId: String,
         assignment: TaskAssignmentResponse,
         idempotencyKey: String
-    ): TaskAssignmentResponse = assignment.copy(
-        status = "completed",
-        completedAt = 1_000L,
-        pointsAwarded = task.points,
-        onTime = true
-    )
+    ): TaskAssignmentResponse {
+        completeAssignmentIdempotencyKeys += idempotencyKey
+        completeAssignmentError?.let { throw it }
+        return assignment.copy(
+            status = "completed",
+            completedAt = 1_000L,
+            pointsAwarded = task.points,
+            onTime = true
+        )
+    }
 
     override suspend fun updateAssignmentGoogleEventId(
         householdId: String,

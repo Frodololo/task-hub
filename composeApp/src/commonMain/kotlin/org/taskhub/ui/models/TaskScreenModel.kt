@@ -171,14 +171,17 @@ class TaskScreenModel(
     private fun s(key: String) = AppStrings.get(key, settingsStore.getLanguage())
 
     /**
-     * idempotencyKey pendiente por `taskId`, para reutilizar entre reintentos
-     * de [completeTask] de la MISMA acción lógica — sin esto, un reintento
-     * manual tras un error ambiguo (p.ej. timeout de red ya aplicado en
-     * servidor) generaba una clave NUEVA en cada llamada, así que el servidor
-     * lo trataba como una compleción distinta y podía duplicar los puntos
+     * idempotencyKey pendiente por `taskId` (para [completeTask]) o
+     * `assignmentId` (para [completeAssignment]), para reutilizar entre
+     * reintentos de la MISMA acción lógica — sin esto, un reintento manual
+     * tras un error ambiguo (p.ej. timeout de red ya aplicado en servidor)
+     * generaba una clave NUEVA en cada llamada, así que el servidor lo
+     * trataba como una compleción distinta y podía duplicar los puntos
      * otorgados. Se retira del mapa al iniciar la llamada y solo se vuelve a
      * guardar si esa llamada falla, para que un éxito posterior arranque con
-     * clave nueva en la siguiente acción.
+     * clave nueva en la siguiente acción. `taskId` y `assignmentId` son IDs
+     * de documentos Firestore de colecciones distintas — sin riesgo real de
+     * colisión entre ambos espacios de claves.
      */
     private val pendingIdempotencyKeys = mutableMapOf<String, String>()
 
@@ -881,6 +884,10 @@ class TaskScreenModel(
         if (_actionState.value == TaskActionState.Loading) return
         screenModelScope.launch {
             _actionState.value = TaskActionState.Loading
+            // Mismo mecanismo que completeTask (ver su comentario): reutiliza
+            // la clave del intento anterior si el último fallo para esta
+            // asignación fue ambiguo, para no duplicar puntos en un reintento.
+            val idempotencyKey = pendingIdempotencyKeys.remove(assignmentId) ?: Uuid.random().toString()
             try {
                 val memberBefore = repo.getMembers(householdId).find { it.id == assignment.memberId }
 
@@ -889,7 +896,8 @@ class TaskScreenModel(
                     taskId = taskId,
                     task = task,
                     assignmentId = assignmentId,
-                    assignment = assignment
+                    assignment = assignment,
+                    idempotencyKey = idempotencyKey
                 )
                 // Borrar el evento de Calendar vinculado y sincronizar ya la
                 // asignación de la siguiente ocurrencia regenerada — mismo
@@ -927,6 +935,10 @@ class TaskScreenModel(
                 throw e
             } catch (e: Exception) {
                 AppLog.e("TaskScreenModel", "completeAssignment failed for task $taskId", e)
+                // Reutilizar la misma clave en el próximo reintento de ESTA
+                // asignación: mismo motivo que completeTask (ver su
+                // comentario en el catch).
+                pendingIdempotencyKeys[assignmentId] = idempotencyKey
                 if (e is FirestoreRepository.AssignmentCompletionConflictException) {
                     // Mismo motivo que en completeTask: mensaje vía AppStrings
                     // (no el string fijo en español del repo) y recarga del

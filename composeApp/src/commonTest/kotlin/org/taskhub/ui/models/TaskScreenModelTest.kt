@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.setMain
 import org.taskhub.network.FirestoreException
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.network.models.MemberResponse
+import org.taskhub.network.models.TaskAssignmentResponse
 import org.taskhub.network.models.TaskResponse
 import org.taskhub.platform.NoOpAdController
 import org.taskhub.storage.SettingsStore
@@ -283,6 +284,68 @@ class TaskScreenModelTest {
         model.completeTask("h1", "t1") // segunda acción "real" (p.ej. tras deshacer)
 
         val secondKey = repo.completeTaskIdempotencyKeys[1]
+        assertTrue(firstKey != secondKey, "tras un ÉXITO no debe quedar clave pendiente reutilizable — cada acción nueva necesita su propia clave")
+    }
+
+    // ── completeAssignment: mismo contrato de idempotencyKey que completeTask ──
+
+    private fun assignment(id: String, taskId: String = "t1", memberId: String = "m1") = TaskAssignmentResponse(
+        id = id,
+        taskId = taskId,
+        memberId = memberId
+    )
+
+    @Test
+    fun completeAssignment_exito_propagaUnaIdempotencyKeyNoVaciaAlRepo() = runTest {
+        val repo = FakeFirestoreRepository().apply {
+            tasks = listOf(task("t1"))
+            members = listOf(member("m1"))
+        }
+        val model = newModel(repo)
+
+        model.completeAssignment("h1", "t1", task("t1"), "a1", assignment("a1"))
+
+        assertEquals(1, repo.completeAssignmentIdempotencyKeys.size)
+        assertTrue(repo.completeAssignmentIdempotencyKeys.single().isNotBlank())
+    }
+
+    @Test
+    fun completeAssignment_fallaAmbiguoYReintenta_reutilizaLaMismaIdempotencyKey() = runTest {
+        val repo = FakeFirestoreRepository().apply {
+            tasks = listOf(task("t1"))
+            members = listOf(member("m1"))
+            completeAssignmentError = RuntimeException("timeout: aplicado en servidor, respuesta perdida")
+        }
+        val model = newModel(repo)
+
+        model.completeAssignment("h1", "t1", task("t1"), "a1", assignment("a1"))
+        assertIs<TaskActionState.Error>(model.actionState.value)
+        val firstKey = repo.completeAssignmentIdempotencyKeys.single()
+
+        // Reintento manual de la MISMA acción tras el fallo.
+        repo.completeAssignmentError = null
+        model.completeAssignment("h1", "t1", task("t1"), "a1", assignment("a1"))
+
+        assertEquals(
+            listOf(firstKey, firstKey),
+            repo.completeAssignmentIdempotencyKeys,
+            "el reintento tras un fallo ambiguo debe reutilizar la clave del intento anterior, no generar una nueva (evita duplicar puntos si el servidor ya lo aplicó)"
+        )
+    }
+
+    @Test
+    fun completeAssignment_exito_laSiguienteAccionGeneraClaveNueva() = runTest {
+        val repo = FakeFirestoreRepository().apply {
+            tasks = listOf(task("t1"))
+            members = listOf(member("m1"))
+        }
+        val model = newModel(repo)
+
+        model.completeAssignment("h1", "t1", task("t1"), "a1", assignment("a1"))
+        val firstKey = repo.completeAssignmentIdempotencyKeys.single()
+        model.completeAssignment("h1", "t1", task("t1"), "a1", assignment("a1")) // segunda acción "real"
+
+        val secondKey = repo.completeAssignmentIdempotencyKeys[1]
         assertTrue(firstKey != secondKey, "tras un ÉXITO no debe quedar clave pendiente reutilizable — cada acción nueva necesita su propia clave")
     }
 
