@@ -67,6 +67,7 @@ class JoinHouseholdScreen : Screen {
         var inviteCode by remember { mutableStateOf("") }
         var codeTouched by remember { mutableStateOf(false) }
         var displayName by remember { mutableStateOf("") }
+        var nameAutoFilled by remember { mutableStateOf(false) }
         val focusManager = LocalFocusManager.current
 
         // Track the joined household
@@ -78,6 +79,7 @@ class JoinHouseholdScreen : Screen {
             val signedIn = authState as? GoogleAuthState.SignedIn
             if (displayName.isEmpty() && signedIn?.displayName != null) {
                 displayName = signedIn.displayName
+                nameAutoFilled = true
             }
         }
 
@@ -277,7 +279,12 @@ class JoinHouseholdScreen : Screen {
                         label = { Text(s("create_profile_name_label")) },
                         placeholder = { Text(s("create_profile_name_placeholder")) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        // liveRegion solo cuando se auto-rellena desde Google: sin esto,
+                        // TalkBack no anuncia que el campo ya tiene un valor (panel v21).
+                        modifier = if (nameAutoFilled)
+                            Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }
+                        else
+                            Modifier.fillMaxWidth(),
                         enabled = memberState !is MemberUiState.Loading
                     )
 

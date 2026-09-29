@@ -192,12 +192,10 @@ class CreateHouseholdScreen : Screen {
                     onClick = { showEmojiGrid = !showEmojiGrid },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        if (customEmoji != null)
-                            s("create_household_emoji_selected").replace("%s", effectiveEmoji)
-                        else
-                            s("create_household_choose_emoji")
-                    )
+                    // Muestra siempre el emoji vigente (el del SpaceType si no se ha
+                    // elegido otro, o el elegido) en vez de un texto genérico "Elegir
+                    // emoji" que no reflejaba que ya había uno por defecto (panel v21).
+                    Text(s("create_household_emoji_selected").replace("%s", effectiveEmoji))
                 }
 
                 AnimatedVisibility(

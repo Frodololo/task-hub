@@ -8,11 +8,24 @@ package org.taskhub.ui.components
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import org.taskhub.network.RecurrenceRules
 import org.taskhub.network.models.TaskResponse
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.TaskSort
+
+/**
+ * Medianoche local de hoy, en epoch millis — base de comparación para
+ * vencidas/hoy/completadas (ver [isTaskDueToday], [isTaskCompletedToday]).
+ * Extraída de [org.taskhub.ui.screens.TaskListScreen] (panel v21, pendiente
+ * técnico): antes vivía dentro del `@Composable`, sin forma de testearla
+ * fuera de un entorno Compose.
+ */
+internal fun todayStartEpoch(): Long {
+    val tz = TimeZone.currentSystemDefault()
+    return Clock.System.now().toLocalDateTime(tz).date.atStartOfDayIn(tz).toEpochMilliseconds()
+}
 
 // ────────────────────────────────────────────────────────────
 //  Task is-due-today logic (local calculation, no instances)

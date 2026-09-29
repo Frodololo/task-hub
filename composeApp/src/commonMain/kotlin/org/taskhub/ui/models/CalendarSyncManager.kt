@@ -108,9 +108,40 @@ class CalendarSyncManagerImpl(
      */
     private val createEventSemaphore = Semaphore(4)
 
+    /**
+     * Cuenta los fallos consecutivos de [GoogleAuthManager.ensureCalendarAccessToken].
+     * Al llegar a [MAX_CONSECUTIVE_TOKEN_FAILURES], se desvincula la cuenta
+     * ([SettingsStore.unlinkGoogleCalendar]) para que [SettingsStore.hasGoogleLinked]
+     * refleje que el enlace ya no es válido (p. ej. consentimiento revocado en
+     * Google) en vez de quedarse indefinidamente en "vinculado" pese a que todo
+     * intento de sincronizar falle en silencio (panel v21). Se resetea a 0 en
+     * cualquier sincronización que obtenga el token con éxito.
+     */
+    private var consecutiveTokenFailures = 0
+
     private companion object {
         /** Ver KDoc de [reconcile] (panel v17, hallazgo de rendimiento). */
         const val RECONCILE_THROTTLE_MS = 15 * 60 * 1000L
+
+        /** Ver KDoc de [consecutiveTokenFailures]. */
+        const val MAX_CONSECUTIVE_TOKEN_FAILURES = 3
+    }
+
+    /**
+     * Envuelve [GoogleAuthManager.ensureCalendarAccessToken] para llevar la
+     * cuenta de fallos consecutivos de [consecutiveTokenFailures] — ver su KDoc.
+     */
+    private suspend fun ensureCalendarAccessToken(): String? {
+        val token = authManager.ensureCalendarAccessToken()
+        if (token != null) {
+            consecutiveTokenFailures = 0
+        } else {
+            consecutiveTokenFailures++
+            if (consecutiveTokenFailures >= MAX_CONSECUTIVE_TOKEN_FAILURES) {
+                settingsStore.unlinkGoogleCalendar()
+            }
+        }
+        return token
     }
 
     /** Devuelve el calendarId cacheado localmente, o lo crea/busca y lo cachea. */
@@ -151,7 +182,7 @@ class CalendarSyncManagerImpl(
             val mine = assignments.filter { it.memberId == myMemberId && it.dueDate > 0 }
             if (mine.isEmpty()) return@bestEffort
 
-            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
+            val token = ensureCalendarAccessToken() ?: return@bestEffort
             val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return@bestEffort
             val tasks = bestEffort(emptyList(), "CalendarSyncManager.onTaskAssigned.getTasks") {
                 repo.getTasks(householdId)
@@ -196,7 +227,7 @@ class CalendarSyncManagerImpl(
             val myMemberId = repo.resolveCurrentMember(householdId)
             if (assignment.memberId != myMemberId) return@bestEffort
 
-            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
+            val token = ensureCalendarAccessToken() ?: return@bestEffort
             val eventId = assignment.googleEventId
             if (eventId == null) {
                 if (newDueDate <= 0) return@bestEffort
@@ -267,7 +298,7 @@ class CalendarSyncManagerImpl(
             }
             if (pending.isEmpty()) return@bestEffort
 
-            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
+            val token = ensureCalendarAccessToken() ?: return@bestEffort
             val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return@bestEffort
 
             coroutineScope {
@@ -296,7 +327,7 @@ class CalendarSyncManagerImpl(
         task: org.taskhub.network.models.TaskResponse
     ): Boolean {
         if (assignment.dueDate <= 0) return false
-        val token = authManager.ensureCalendarAccessToken() ?: return false
+        val token = ensureCalendarAccessToken() ?: return false
         val calendarId = ensureCalendarId(householdId, householdName, isPersonal, token) ?: return false
         return bestEffort(false, "CalendarSyncManager.syncNow.createEvent") {
             val event = calendarRepo.createEvent(
@@ -335,7 +366,7 @@ class CalendarSyncManagerImpl(
         val eventId = assignment.googleEventId ?: return
         bestEffort(Unit, "CalendarSyncManager.deleteEventForAssignment.cleanup") {
             val calendarId = settingsStore.getCalendarId(householdId) ?: return@bestEffort
-            val token = authManager.ensureCalendarAccessToken() ?: return@bestEffort
+            val token = ensureCalendarAccessToken() ?: return@bestEffort
             // Puede que ya no exista (borrado a mano) — igualmente limpiamos el campo.
             bestEffort(Unit, "CalendarSyncManager.deleteEventForAssignment.deleteEvent") {
                 calendarRepo.deleteEvent(token, calendarId, eventId)

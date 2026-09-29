@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
@@ -31,6 +32,7 @@ import org.taskhub.platform.DebugFlags
 import org.taskhub.platform.setAnalyticsCollectionEnabled
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SettingsStore
+import org.taskhub.ui.theme.TaskHubThemeType
 import org.taskhub.BuildConfig
 
 /**
@@ -167,6 +169,18 @@ class MainActivity : ComponentActivity() {
         setTheme(R.style.Theme_TaskHub)
 
         enableEdgeToEdge()
+
+        // enableEdgeToEdge() fija el color de los iconos de la barra de estado/
+        // navegación según el modo día/noche DEL SISTEMA, no el tema de la app.
+        // El tema Medianoche es oscuro incluso con el sistema en modo claro, así
+        // que ahí los iconos salían oscuros sobre un fondo oscuro (bajo contraste,
+        // panel v21) — se fuerzan claros explícitamente para ese tema.
+        if (settingsStore.getTheme() == TaskHubThemeType.MIDNIGHT.name) {
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+            }
+        }
 
         // Hold a static reference to the app context for platform helpers
         AndroidContextHolder.context = applicationContext

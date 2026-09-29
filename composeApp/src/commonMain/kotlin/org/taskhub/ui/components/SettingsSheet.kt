@@ -397,46 +397,26 @@ fun SettingsSheet(
         Spacer(Modifier.height(24.dp))
 
         // ── Theme ────────────────────────────────────────
+        // RadioOptionRow (no dropdown): consistente con los selectores de
+        // Idioma y Tema del widget de más abajo — mismo patrón de 2-3 opciones
+        // pero con 6 temas (panel v21).
         SettingsSection(title = s("settings_theme")) {
-            var themeMenuExpanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = themeMenuExpanded,
-                onExpandedChange = { themeMenuExpanded = it }
-            ) {
-                OutlinedTextField(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                    readOnly = true,
-                    value = getThemeLabel(appSettings.currentTheme, s),
-                    onValueChange = {},
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = themeMenuExpanded) },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                )
-                ExposedDropdownMenu(
-                    expanded = themeMenuExpanded,
-                    onDismissRequest = { themeMenuExpanded = false }
-                ) {
-                    TaskHubThemeType.entries.forEach { theme ->
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(16.dp)
-                                            .clip(CircleShape)
-                                            .background(themeColorFor(theme))
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Text(getThemeLabel(theme, s))
-                                }
-                            },
-                            onClick = {
-                                appSettings.onThemeChanged(theme)
-                                themeMenuExpanded = false
-                            }
-                        )
-                    }
+            Column(modifier = Modifier.selectableGroup()) {
+                TaskHubThemeType.entries.forEach { theme ->
+                    RadioOptionRow(
+                        label = getThemeLabel(theme, s),
+                        selected = appSettings.currentTheme == theme,
+                        onClick = { appSettings.onThemeChanged(theme) },
+                        leadingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(themeColorFor(theme))
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                    )
                 }
             }
         }
@@ -825,15 +805,19 @@ private fun themeColorFor(theme: TaskHubThemeType): Color =
     }
 
 /**
- * Fila de opción con RadioButton reutilizada por los 2 selectores restantes
- * de esta pantalla (idioma, tema del widget) — antes eran tres composables
+ * Fila de opción con RadioButton reutilizada por los selectores de esta
+ * pantalla (tema, idioma, tema del widget) — antes eran composables
  * idénticos letra por letra (ThemeOption/LanguageOption/WidgetThemeOption).
+ *
+ * @param leadingContent contenido opcional entre el RadioButton y el label
+ *   (p. ej. el swatch de color del selector de tema).
  */
 @Composable
 private fun RadioOptionRow(
     label: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    leadingContent: (@Composable RowScope.() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -856,6 +840,7 @@ private fun RadioOptionRow(
             )
         )
         Spacer(Modifier.width(8.dp))
+        leadingContent?.invoke(this)
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge

@@ -79,6 +79,7 @@ import org.taskhub.ui.components.TaskGroup
 import org.taskhub.ui.components.groupTasksByStatus
 import org.taskhub.ui.components.isTaskDueToday
 import org.taskhub.ui.components.isTaskCompletedToday
+import org.taskhub.ui.components.todayStartEpoch
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.theme.*
 import org.taskhub.platform.shareText
@@ -394,10 +395,7 @@ private fun TaskListContent(
     val lang = LocalAppSettings.current.currentLanguage
 
     // Compute today start for overdue detection and due-today calculation
-    val now = Clock.System.now()
-    val tz = TimeZone.currentSystemDefault()
-    val todayStartEpoch = now.toLocalDateTime(tz).date
-        .atStartOfDayIn(tz).toEpochMilliseconds()
+    val todayStartEpoch = todayStartEpoch()
 
     // Estado por tarea (isDueToday/isCompletedToday/isOverdue vía
     // RecurrenceRules) calculado UNA vez por tarea — independiente de
