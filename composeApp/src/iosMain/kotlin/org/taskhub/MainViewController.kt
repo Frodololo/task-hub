@@ -15,7 +15,7 @@ import org.taskhub.ui.theme.TaskHubTheme
  * sistema que abran la app en una pantalla concreta (ver KDoc de [App]).
  */
 fun MainViewController() = ComposeUIViewController(
-    configure = { enforceStrictPlistSanity = false }
+    configure = { enforceStrictPlistSanityCheck = false }
 ) {
     TaskHubTheme {
         App()

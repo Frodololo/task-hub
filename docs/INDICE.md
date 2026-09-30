@@ -121,6 +121,22 @@ entender *por qué* el código quedó como quedó en ciertos puntos.
   (sandboxing de scripts, `env -i` en "Compile Kotlin Framework") que iban a
   romper el primer build real en Mac. Incluye guía completa de instalación
   local (sideload) y troubleshooting para el miembro del equipo con Mac.
+- **[ios-build-y-google-signin-2026-09-21.md](ios-build-y-google-signin-2026-09-21.md)**
+  — continuación directa del informe anterior: primer build real verificado
+  con el compilador (6 errores de compilación por un import ausente de una
+  categoría de Objective-C), el login de Google seguía completamente roto
+  en runtime (Google rechazaba el implicit flow con `Error 400:
+  unsupported_response_type` — migración completa a Authorization Code +
+  PKCE, nuevo `GoogleIosSignInHelper.kt`), un crash de enlazado en el motor
+  Darwin de Ktor (bug de la versión 3.0.3, resuelto con bump a 3.2.0 tras
+  descartar la última estable por incompatibilidad de ABI con el compilador
+  del proyecto), y dos bugs de bridging CFStringRef/NSDictionary↔CoreFoundation
+  en el Keychain (`SecureStore.ios.kt`, nunca antes ejecutado) que se
+  disfrazaban de "Sin conexión a internet". Desarrollo pedagógico extenso de
+  cada causa raíz (interop de Kotlin/Native, OAuth 2.0/PKCE, compatibilidad
+  de ABI de klibs). Cierra con una página de Safari en blanco sin resolver
+  (probable flakiness del Simulador) y una lista explícita de deuda técnica
+  (`println` de diagnóstico sin retirar, `TEAM_ID` vacío).
 - **[correcciones-2026-09-05-propuestas-aprobadas.md](correcciones-2026-09-05-propuestas-aprobadas.md)**
   y **[correcciones-2026-09-05-notificaciones.md](correcciones-2026-09-05-notificaciones.md)**
   — ronda de correcciones aprobadas y el cierre del flujo de notificaciones
