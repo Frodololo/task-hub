@@ -275,12 +275,13 @@ class JoinHouseholdScreen : Screen {
                 if (joinedHouseholdId != null && householdState is HouseholdUiState.Success) {
                     OutlinedTextField(
                         value = displayName,
-                        onValueChange = { displayName = it },
+                        onValueChange = { displayName = it; nameAutoFilled = false },
                         label = { Text(s("create_profile_name_label")) },
                         placeholder = { Text(s("create_profile_name_placeholder")) },
                         singleLine = true,
-                        // liveRegion solo cuando se auto-rellena desde Google: sin esto,
-                        // TalkBack no anuncia que el campo ya tiene un valor (panel v21).
+                        // liveRegion solo mientras el valor sigue siendo el auto-relleno
+                        // sin tocar: se apaga en el primer onValueChange (edición real
+                        // del usuario), ver CreateProfileScreen.kt (panel v22, corrige v21 #1).
                         modifier = if (nameAutoFilled)
                             Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }
                         else
