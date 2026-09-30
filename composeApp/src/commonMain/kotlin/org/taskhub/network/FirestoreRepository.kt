@@ -189,14 +189,6 @@ open class FirestoreRepository(
         val localId = response.localId
         val expiresIn = response.expiresIn?.toLongOrNull()
         if (idToken.isNullOrBlank() || localId.isNullOrBlank() || expiresIn == null) {
-            // DIAGNÓSTICO TEMPORAL — quitar tras identificar la causa real de
-            // "respuesta incompleta" en iOS (se traduce a "Sin conexión a
-            // internet" por el catch-all de ErrorCategory, que oculta esto).
-            println(
-                "DEBUG signInWithIdp respuesta incompleta: idToken=${response.idToken?.let { "presente(${it.length} chars)" } ?: "null"}, " +
-                "localId=${response.localId ?: "null"}, expiresIn=${response.expiresIn ?: "null"}, " +
-                "email=${response.email ?: "null"}, refreshToken=${response.refreshToken?.let { "presente" } ?: "null"}"
-            )
             throw IllegalStateException(
                 "Google sign-in falló: respuesta de Firebase Auth incompleta. " +
                 "Verifica que el proveedor Google esté habilitado en Firebase Auth."

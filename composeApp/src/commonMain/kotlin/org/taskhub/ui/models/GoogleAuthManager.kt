@@ -363,11 +363,6 @@ class GoogleAuthManager(
             // vía [toUserMessage] — antes mostraba siempre el mismo mensaje
             // genérico sin distinguir "no hay internet" de un fallo real de
             // Identity Toolkit (`docs/mensajes-error-usuario-2026-09-16.md`).
-            // DIAGNÓSTICO TEMPORAL — quitar tras identificar la causa real de
-            // "Sin conexión a internet" en iOS: este catch es el ÚNICO sitio
-            // que produce GoogleAuthState.Error en toda la app, así que este
-            // print SIEMPRE se ejecuta cuando aparece ese mensaje.
-            println("DEBUG handleGoogleToken falló: ${e::class.simpleName}: ${e.message}")
             _state.value = GoogleAuthState.Error(
                 e.toUserMessage(settingsStore.getLanguage(), "google_auth_error_sign_in")
             )
