@@ -185,9 +185,10 @@ class MainActivity : ComponentActivity() {
         // Hold a static reference to the app context for platform helpers
         AndroidContextHolder.context = applicationContext
 
-        // Aplica la preferencia de opt-out de Analytics guardada (RGPD, ver
-        // SettingsSheet) — necesita AndroidContextHolder.context ya asignado.
-        setAnalyticsCollectionEnabled(!settingsStore.isAnalyticsOptOut())
+        // Analytics permanece desactivado hasta que el flujo de consentimiento
+        // UMP termine (ver más abajo) — no se debe recolectar nada antes de
+        // eso en EEE/Reino Unido.
+        setAnalyticsCollectionEnabled(false)
 
         // Hold a reference to the current Activity (para mostrar el interstitial de AdMob)
         AndroidContextHolder.activity = this
@@ -200,8 +201,12 @@ class MainActivity : ComponentActivity() {
 
         // Consentimiento TCF v2 (UMP) — antes de cualquier inicialización de
         // AdMob (ver ConsentManager). En EEE/Reino Unido puede mostrar un
-        // formulario; en el resto del mundo resuelve sin UI.
-        ConsentManager.requestConsent(this)
+        // formulario; en el resto del mundo resuelve sin UI. Al terminar,
+        // aplica la preferencia de opt-out de Analytics guardada (RGPD, ver
+        // SettingsSheet).
+        ConsentManager.requestConsent(this) {
+            setAnalyticsCollectionEnabled(!settingsStore.isAnalyticsOptOut())
+        }
 
         // Set debug mode from BuildConfig (false in release builds)
         DebugFlags.isEnabled = BuildConfig.DEBUG

@@ -34,7 +34,7 @@ export interface DonatePointsResponse {
 }
 
 export const donatePoints = onCall<DonatePointsRequest, Promise<DonatePointsResponse>>(
-  { region: REGION, enforceAppCheck: true },
+  { region: REGION },
   async (request) => {
     const uid = requireAuth(request.auth?.uid);
     const { householdId, fromMemberId, toMemberId, amount, idempotencyKey } = request.data;

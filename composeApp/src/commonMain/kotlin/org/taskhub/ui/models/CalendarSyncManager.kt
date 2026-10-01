@@ -119,6 +119,14 @@ class CalendarSyncManagerImpl(
      */
     private var consecutiveTokenFailures = 0
 
+    /**
+     * Protege [consecutiveTokenFailures]: varias sincronizaciones concurrentes
+     * (p. ej. [onTaskAssigned] y [reconcile] disparadas juntas al abrir la
+     * app) pueden llamar a [ensureCalendarAccessToken] a la vez, y sin lock el
+     * incremento no atómico podía perder cuentas o desvincular de más.
+     */
+    private val tokenFailuresMutex = Mutex()
+
     private companion object {
         /** Ver KDoc de [reconcile] (panel v17, hallazgo de rendimiento). */
         const val RECONCILE_THROTTLE_MS = 15 * 60 * 1000L
@@ -133,12 +141,18 @@ class CalendarSyncManagerImpl(
      */
     private suspend fun ensureCalendarAccessToken(): String? {
         val token = authManager.ensureCalendarAccessToken()
-        if (token != null) {
-            consecutiveTokenFailures = 0
-        } else {
-            consecutiveTokenFailures++
-            if (consecutiveTokenFailures >= MAX_CONSECUTIVE_TOKEN_FAILURES) {
-                settingsStore.unlinkGoogleCalendar()
+        tokenFailuresMutex.withLock {
+            if (token != null) {
+                consecutiveTokenFailures = 0
+            } else {
+                // Sin red, el fallo del token no dice nada sobre si el
+                // consentimiento sigue siendo válido — no cuenta como fallo
+                // real, para no desvincular la cuenta solo por estar offline.
+                if (!repo.isOnline()) return@withLock
+                consecutiveTokenFailures++
+                if (consecutiveTokenFailures >= MAX_CONSECUTIVE_TOKEN_FAILURES) {
+                    settingsStore.unlinkGoogleCalendar()
+                }
             }
         }
         return token
@@ -364,6 +378,11 @@ class CalendarSyncManagerImpl(
 
     private suspend fun deleteEventForAssignment(householdId: String, assignment: TaskAssignmentResponse) {
         val eventId = assignment.googleEventId ?: return
+        // Un googleEventId solo tiene sentido en el calendario del propio
+        // usuario (ver onTaskAssigned, que solo sincroniza "mine") — una
+        // asignación de otro miembro nunca debería intentar borrar nada con
+        // MI token/calendarId.
+        if (assignment.memberId != repo.resolveCurrentMember(householdId)) return
         bestEffort(Unit, "CalendarSyncManager.deleteEventForAssignment.cleanup") {
             val calendarId = settingsStore.getCalendarId(householdId) ?: return@bestEffort
             val token = ensureCalendarAccessToken() ?: return@bestEffort

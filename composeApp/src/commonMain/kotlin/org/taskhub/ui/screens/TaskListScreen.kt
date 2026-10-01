@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -1005,7 +1006,9 @@ private fun GroupHeader(
         ExpandableSectionHeader(
             expanded = !isCollapsed,
             onToggle = onToggle,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .semantics { heading() },
             chevronTint = contentColor,
             chevronSize = 20.dp
         ) {

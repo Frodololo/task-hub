@@ -32,7 +32,6 @@ class MemberScreenModelTest {
         assertEquals("donate_error_insufficient_balance", donateErrorKey(MemberRepository.DonateErrorReason.INSUFFICIENT_BALANCE))
         assertEquals("transfer_error_member_not_found", donateErrorKey(MemberRepository.DonateErrorReason.MEMBER_NOT_FOUND))
         assertEquals("transfer_error_failed", donateErrorKey(MemberRepository.DonateErrorReason.TRANSFER_FAILED))
-        assertEquals("transfer_error_rollback_failed", donateErrorKey(MemberRepository.DonateErrorReason.ROLLBACK_FAILED))
         assertEquals("donate_error_exceeds_limit", donateErrorKey(MemberRepository.DonateErrorReason.AMOUNT_EXCEEDS_LIMIT))
         assertEquals("transfer_error_uncertain", donateErrorKey(MemberRepository.DonateErrorReason.UNCERTAIN))
     }

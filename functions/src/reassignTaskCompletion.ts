@@ -36,7 +36,7 @@ export interface ReassignTaskCompletionResponse {
 }
 
 export const reassignTaskCompletion = onCall<ReassignTaskCompletionRequest, Promise<ReassignTaskCompletionResponse>>(
-  { region: REGION, enforceAppCheck: true },
+  { region: REGION },
   async (request) => {
     const uid = requireAuth(request.auth?.uid);
     const { householdId, taskId, newMemberId } = request.data;

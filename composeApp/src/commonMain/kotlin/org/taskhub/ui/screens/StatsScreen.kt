@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.drawText
@@ -161,11 +162,13 @@ internal fun StatsBody(householdId: String, memberId: String, statsModel: StatsS
                             if (achievements.isNotEmpty()) {
                                 item {
                                     Text(
-                                        text = s("stats_achievements_title"),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(top = 8.dp)
-                                    )
+                                                            text = s("stats_achievements_title"),
+                                                            style = MaterialTheme.typography.titleLarge,
+                                                            fontWeight = FontWeight.Bold,
+                                                            modifier = Modifier
+                                                                .padding(top = 8.dp)
+                                                                .semantics { heading() }
+                                                        )
                                 }
 
                                 items(achievements, key = { it.id }) { achievement ->

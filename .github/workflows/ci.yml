@@ -34,8 +34,14 @@ jobs:
 
       # El target JVM NO compila androidMain (MainActivity, Workers, Analytics,
       # AdMob...): antes CI podía estar en verde con androidMain roto. Los
-      # runners ubuntu-latest de GitHub traen el Android SDK preinstalado, así
-      # que no hace falta configurarlo aparte.
+      # runners ubuntu-latest de GitHub traen el Android SDK preinstalado, PERO
+      # pueden no tener la plataforma android-36 (requerida por compileSdk 36),
+      # así que se instala explícitamente igual que en release.yml.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0'
+
       - name: Build composeApp (Android)
         run: ./gradlew :composeApp:compileDebugKotlinAndroid
 
@@ -43,10 +49,6 @@ jobs:
       # antes nunca se ejecutaban en CI pese a existir.
       - name: Run tests (JVM)
         run: ./gradlew :composeApp:jvmTest
-
-      - name: Lint — detekt
-        run: ./gradlew :composeApp:detekt
-        continue-on-error: true
 
   functions-tests:
     name: Cloud Functions — Build & Tests

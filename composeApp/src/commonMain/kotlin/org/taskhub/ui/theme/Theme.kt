@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 // ── Theme enum ────────────────────────────────────────────
 
 /**
- * Los 3 temas visuales que el usuario elige en Ajustes (persistido en
+ * Los 6 temas visuales que el usuario elige en Ajustes (persistido en
  * [org.taskhub.storage.SettingsStore], ver `App.kt`). Cada uno tiene su
  * propio par de esquemas Material3 claro/oscuro más abajo (p.ej.
  * [DefaultLightColorScheme]/[DefaultDarkColorScheme] para [DEFAULT]).
@@ -417,27 +417,36 @@ private val MinimalLightColorScheme = lightColorScheme(
     surface = MonoWhite,
     onSurface = MonoGray900,
     surfaceVariant = MonoGray50,
-    onSurfaceVariant = MonoGray600,
+    // Panel v24 (2026-10-01), hallazgo accesibilidad: MonoGray600 (#757575)
+    // sobre MonoGray50 (#F5F5F5) daba 4.23:1 — por debajo del umbral AA de
+    // texto normal (4.5:1). #707070 da 4.54:1.
+    onSurfaceVariant = Color(0xFF707070),
 
-    outline = MonoGray400,
+    // Panel v24 (2026-10-01), hallazgo accesibilidad: MonoGray200 (#BDBDBD)
+    // daba 1.88:1 sobre fondo blanco — por debajo del umbral 3.0:1 para
+    // contenido no-textual (WCAG 1.4.11). #8E8E8E da 3.28:1.
+    outline = Color(0xFF8E8E8E),
     outlineVariant = MonoGray200,
 )
 
 private val MinimalDarkColorScheme = darkColorScheme(
     primary = MonoGray100,
     onPrimary = MonoGray900,
+    // Panel v24 (2026-10-01), hallazgo accesibilidad: MonoGray50 (#F5F5F5)
+    // sobre MonoGray600 (#757575) daba 4.23:1 — por debajo del umbral AA de
+    // texto normal (4.5:1). Blanco (#FFFFFF) da 4.61:1.
     primaryContainer = MonoGray600,
-    onPrimaryContainer = MonoGray50,
+    onPrimaryContainer = MonoWhite,
 
     secondary = MonoGray200,
     onSecondary = MonoGray800,
     secondaryContainer = MonoGray600,
-    onSecondaryContainer = MonoGray50,
+    onSecondaryContainer = MonoWhite,
 
     tertiary = MonoGray400,
     onTertiary = MonoWhite,
     tertiaryContainer = MonoGray600,
-    onTertiaryContainer = MonoGray50,
+    onTertiaryContainer = MonoWhite,
 
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),

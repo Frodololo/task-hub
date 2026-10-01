@@ -21,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
@@ -51,10 +53,17 @@ import org.taskhub.ui.screens.SplashScreen
 import org.taskhub.ui.screens.TaskDetailScreen
 import org.taskhub.ui.theme.TaskHubTheme
 import org.taskhub.ui.theme.TaskHubThemeType
-import org.taskhub.ui.theme.Teal600
 
 /** Límite del bootstrap post-login (espacio Personal + miembro "Yo" + restaurar hogares) — ver LaunchedEffect en [App]. */
 private const val BOOTSTRAP_TIMEOUT_MS = 20_000L
+
+/** Tema persistido en [settingsStore], o [TaskHubThemeType.DEFAULT] si el valor guardado no es válido (p.ej. tras quitar un tema). */
+private fun resolveTheme(settingsStore: SettingsStore): TaskHubThemeType =
+    try {
+        TaskHubThemeType.valueOf(settingsStore.getTheme())
+    } catch (_: IllegalArgumentException) {
+        TaskHubThemeType.DEFAULT
+    }
 
 /**
  * Composable raíz de la app.
@@ -274,11 +283,7 @@ fun App(
             // Naturaleza/Minimal), no una paleta Teal/Coral fija — se resuelve aquí
             // igual que `themeType` más abajo porque `LocalAppSettings` aún no
             // está disponible en esta fase.
-            val splashThemeType = try {
-                TaskHubThemeType.valueOf(settingsStore.getTheme())
-            } catch (_: IllegalArgumentException) {
-                TaskHubThemeType.DEFAULT
-            }
+            val splashThemeType = resolveTheme(settingsStore)
             SplashScreen(
                 lang = settingsStore.getLanguage(),
                 themeType = splashThemeType,
@@ -289,13 +294,7 @@ fun App(
 
         // Reactive theme from settings
         var themeType by remember {
-            mutableStateOf(
-                try {
-                    TaskHubThemeType.valueOf(settingsStore.getTheme())
-                } catch (_: IllegalArgumentException) {
-                    TaskHubThemeType.DEFAULT
-                }
-            )
+            mutableStateOf(resolveTheme(settingsStore))
         }
 
         // Reactive language from settings
@@ -371,10 +370,12 @@ fun App(
                                 } else {
                                     // Still loading
                                     Box(
-                                        modifier = Modifier.fillMaxSize(),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .semantics { contentDescription = "Cargando" },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CircularProgressIndicator(color = Teal600)
+                                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                             }

@@ -20,6 +20,7 @@ package org.taskhub.platform
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.forms.submitForm
 import io.ktor.http.Parameters
@@ -57,6 +58,11 @@ object GoogleIosSignInHelper {
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
+            install(HttpTimeout) {
+                requestTimeoutMillis = 15_000
+                connectTimeoutMillis = 10_000
+                socketTimeoutMillis = 15_000
+            }
         }
     }
 
@@ -65,6 +71,7 @@ object GoogleIosSignInHelper {
      * garantía que la guarda de reentrancia de
      * [org.taskhub.ui.models.GoogleAuthManager.signIn].
      */
+    @Volatile
     private var pendingCodeVerifier: String? = null
 
     /** Construye la URL de autorización (authorization-code + PKCE) y guarda el `code_verifier` para el canje posterior en [handleCallback]. */
@@ -87,7 +94,7 @@ object GoogleIosSignInHelper {
     }
 
     /** Scope dedicado al canje código-por-token, fuera de la pila de `onOpenURL`. */
-    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
      * Punto de entrada llamado directamente desde `ContentView.swift`

@@ -651,10 +651,6 @@ class MemberRepository(
 
     /**
      * Motivos por los que [donatePoints] puede rechazar la operación sin lanzar.
-     * [ROLLBACK_FAILED] es distinto de [TRANSFER_FAILED]: en ese caso concreto
-     * la reversión del débito al donante TAMBIÉN falló, así que sus puntos sí
-     * pueden haberse visto afectados — a diferencia de [TRANSFER_FAILED], cuyo
-     * mensaje afirma lo contrario (panel 2026-09-11, IMPORTANTE).
      * [AMOUNT_EXCEEDS_LIMIT]: caso concreto de fallo en el acreditado al
      * receptor cuando `amount` supera [PointsRules.MAX_PEER_TRANSFER_AMOUNT]
      * — `firestore.rules` `isPeerPointsTransfer` topa cada escritura de
@@ -672,7 +668,7 @@ class MemberRepository(
      * la escritura antes del timeout, así que NO se revierte el débito al
      * donante para evitar duplicar puntos (panel v14, hallazgo 2).
      */
-    enum class DonateErrorReason { SELF, INVALID_AMOUNT, INSUFFICIENT_BALANCE, MEMBER_NOT_FOUND, TRANSFER_FAILED, ROLLBACK_FAILED, AMOUNT_EXCEEDS_LIMIT, UNCERTAIN }
+    enum class DonateErrorReason { SELF, INVALID_AMOUNT, INSUFFICIENT_BALANCE, MEMBER_NOT_FOUND, TRANSFER_FAILED, AMOUNT_EXCEEDS_LIMIT, UNCERTAIN }
 
     /** Presupuesto de "agradecer" vigente de [member] en el instante [now] — ver [PointsRules.currentAppreciationBudget]. */
     private fun currentAppreciationBudget(member: MemberResponse, now: Long): PointsRules.AppreciationBudget =

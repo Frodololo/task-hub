@@ -10,9 +10,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Paleta semántica (éxito / aviso / información), común a los 3 themes
- * (DEFAULT, NATURALEZA, MINIMAL) para que su significado sea reconocible
- * en cualquiera de ellos.
+ * Paleta semántica (éxito / aviso / información), común a los 6 temas
+ * (DEFAULT, NATURALEZA, MINIMAL, OCEANO, ATARDECER, MIDNIGHT) para que su
+ * significado sea reconocible en cualquiera de ellos.
  *
  * Cada tono trae variante de superficie (para texto/iconos sobre fondos
  * neutros) y variante "container" (fondo de chip/badge) + su "on" con

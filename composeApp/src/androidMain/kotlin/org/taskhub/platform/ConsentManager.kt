@@ -35,7 +35,7 @@ object ConsentManager {
      * sesión anterior — comprueba [ConsentInformation.canRequestAds]: solo si
      * es `true` se inicializa AdMob y se precarga el interstitial.
      */
-    fun requestConsent(activity: Activity) {
+    fun requestConsent(activity: Activity, onConsentReady: () -> Unit = {}) {
         val consentInformation = UserMessagingPlatform.getConsentInformation(activity)
 
         // Para forzar el formulario en desarrollo (simula geografía EEE) sin
@@ -52,14 +52,23 @@ object ConsentManager {
             params,
             {
                 UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) {
-                    onConsentInfoReady(activity, consentInformation)
+                    onConsentInfoReady(activity, consentInformation, onConsentReady)
                 }
             },
-            { onConsentInfoReady(activity, consentInformation) }
+            { onConsentInfoReady(activity, consentInformation, onConsentReady) }
         )
     }
 
-    private fun onConsentInfoReady(activity: Activity, consentInformation: ConsentInformation) {
+    private fun onConsentInfoReady(
+        activity: Activity,
+        consentInformation: ConsentInformation,
+        onConsentReady: () -> Unit
+    ) {
+        // Se notifica siempre, independientemente de si el usuario permite
+        // anuncios, para que quien llame (p.ej. MainActivity) pueda aplicar
+        // ajustes que dependen de que el flujo de consentimiento haya
+        // terminado (como activar Analytics) sin acoplarse a AdMob.
+        onConsentReady()
         if (!consentInformation.canRequestAds()) return
         canRequestAds = true
         // MobileAds.initialize() hace I/O de red — igual que antes (ver

@@ -98,7 +98,16 @@ actual fun updateWidgetPendingTasks(taskList: String) {
  * app) — de ahí el authorization-code + PKCE de [GoogleIosSignInHelper].
  */
 actual fun launchGoogleSignIn() {
-    val authUrl = GoogleIosSignInHelper.buildAuthorizationUrl()
+    // runCatching: generar el code_verifier/code_challenge depende del
+    // CSPRNG del sistema (SecRandomCopyBytes), que en teoría puede fallar
+    // (ver randomUrlSafeString) — si eso pasa, se publica "" en vez de
+    // dejar propagar la excepción y crashear la app.
+    val authUrl = runCatching { GoogleIosSignInHelper.buildAuthorizationUrl() }.getOrNull()
+    if (authUrl == null) {
+        GoogleIosSignInHelper.clearPending()
+        GoogleSignInResultHolder.setResult("")
+        return
+    }
     // NSURL(string:) no es nullable en este binding de Kotlin/Native
     // (a diferencia del inicializador failable de Swift `NSURL(string:)?`).
     val url = NSURL(string = authUrl)
@@ -130,7 +139,11 @@ actual fun consumeLastSignInFailureReason(): String? = null
  * aquí — ver KDoc del `expect` en Platform.kt.
  */
 actual fun cancelGoogleSignIn() {
-    // iOS: sin forma programática de cerrar Safari — no-op.
+    // iOS: sin forma programática de cerrar Safari, pero sí se puede
+    // descartar el code_verifier pendiente y liberar el resultado para no
+    // dejar el flujo colgado en SigningIn si el usuario cancela desde la UI.
+    GoogleIosSignInHelper.clearPending()
+    GoogleSignInResultHolder.setResult("")
 }
 
 /**

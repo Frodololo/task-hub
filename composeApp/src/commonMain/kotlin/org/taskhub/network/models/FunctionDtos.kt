@@ -102,16 +102,3 @@ data class CallableRequest<T>(val data: T)
 
 @Serializable
 data class CallableResult<R>(val result: R)
-
-/**
- * Forma del wire de error (`{ "error": {status, message} }`) — documental:
- * [CloudFunctionsClient] no la parsea a mano porque el `HttpClient` compartido
- * ya intercepta cualquier respuesta >=400 con el validador de
- * [FirestoreClient] (misma forma estructural que [FirestoreErrorBody], ver
- * KDoc de [CloudFunctionsClient.call]).
- */
-@Serializable
-data class CallableError(val error: CallableErrorBody)
-
-@Serializable
-data class CallableErrorBody(val status: String, val message: String)

@@ -941,6 +941,17 @@ open class FirestoreRepository(
             AppLog.e("FirestoreRepository", "deleteMember: purgeMemberFromTasks failed for member=$memberId in household=$householdId", e)
             // No crítico: ver KDoc de deleteMember.
         }
+        anonymizeMemberData(householdId, memberId)
+        return result
+    }
+
+    /**
+     * Anonimiza el rastro del miembro expulsado/dado de baja en mensajes de
+     * chat, comentarios de tarea, historial de tareas y canjes de recompensa
+     * — ver KDoc de [deleteMember]. Best-effort por bloque: un fallo en uno
+     * no debe impedir que se intenten los demás.
+     */
+    private suspend fun anonymizeMemberData(householdId: String, memberId: String) {
         // Anonimiza los mensajes de chat del miembro expulsado — mismo patrón
         // ya usado en leaveHousehold (panel v6, Experto 10 #2): a diferencia
         // de abandonar voluntariamente, la expulsión por admin se había
@@ -1004,7 +1015,6 @@ open class FirestoreRepository(
             AppLog.e("FirestoreRepository", "deleteMember: anonymizeMemberRedemptions failed for member=$memberId in household=$householdId", e)
             // No crítico: ver KDoc de deleteMember.
         }
-        return result
     }
 
     /**
@@ -1112,8 +1122,8 @@ open class FirestoreRepository(
      * el cliente seguía haciendo dos PATCH REST secuenciales (restar al
      * donante, luego sumar al receptor) no atómicos, con reversión
      * best-effort si el segundo fallaba a mitad de camino (ver el catálogo
-     * de fallos parciales que dejaba, `TRANSFER_FAILED`/`ROLLBACK_FAILED`/
-     * `UNCERTAIN` más abajo), mientras el servidor ya resolvía ambos lados
+     * de fallos parciales que dejaba, `TRANSFER_FAILED`/`UNCERTAIN` más
+     * abajo), mientras el servidor ya resolvía ambos lados
      * en una única `runTransaction` del Admin SDK.
      *
      * `appreciateMember` NO se migra en este cambio: a diferencia de
@@ -1166,10 +1176,9 @@ open class FirestoreRepository(
             // Mismo criterio de clasificación que antes (ver KDoc de
             // [MemberRepository.DonateErrorReason]): un fallo AMBIGUO (timeout,
             // IOException) no distingue si el servidor completó la transacción,
-            // así que se marca UNCERTAIN en vez de un fallo genérico — pero ya
-            // NO puede dejar el donante debitado sin acreditar al receptor
-            // (la escritura es todo-o-nada en el servidor), así que
-            // ROLLBACK_FAILED ya no es alcanzable desde aquí.
+            // así que se marca UNCERTAIN en vez de un fallo genérico — ya no
+            // puede dejar el donante debitado sin acreditar al receptor (la
+            // escritura es todo-o-nada en el servidor).
             val reason = when {
                 e is CloudFunctionException && e.status == "FAILED_PRECONDITION" ->
                     MemberRepository.DonateErrorReason.INSUFFICIENT_BALANCE

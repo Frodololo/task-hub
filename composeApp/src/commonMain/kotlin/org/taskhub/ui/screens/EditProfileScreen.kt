@@ -42,6 +42,8 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import org.taskhub.ui.components.LocalAppSettings
 import org.taskhub.ui.components.TaskHubTopBar
+import org.taskhub.ui.components.EmojiPicker
+import org.taskhub.ui.components.EMOJI_OPTIONS
 import org.taskhub.ui.components.UserAvatar
 import org.taskhub.ui.components.shouldReduceMotion
 import org.taskhub.ui.i18n.AppStrings
@@ -77,12 +79,6 @@ class EditProfileScreen : Screen {
         var avatarEmoji by remember { mutableStateOf("") }
         var bio by remember { mutableStateOf("") }
         var status by remember { mutableStateOf("") }
-
-        // Emoji picker — grid de emojis comunes
-        val emojiOptions = remember {
-            listOf("🧑", "👩", "👨", "👦", "👧", "🧒", "🐱", "🐶", "🐼", "🦊", "🐸", "🐵",
-                   "🌟", "🔥", "💎", "🎮", "📚", "🎨", "⚽", "🍕", "☕", "🦸", "🧙", "🤖")
-        }
 
         // Cargar perfil al entrar
         LaunchedEffect(Unit) {
@@ -186,66 +182,15 @@ class EditProfileScreen : Screen {
                         )
 
                         // Emoji grid
-                        var showEmojiGrid by remember { mutableStateOf(false) }
-                        val reduceMotion = shouldReduceMotion()
-                        OutlinedButton(
-                            onClick = { showEmojiGrid = !showEmojiGrid },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                if (avatarEmoji.isNotEmpty())
-                                    s("edit_profile_avatar_selected").replace("%s", avatarEmoji)
-                                else
-                                    s("edit_profile_select_emoji")
-                            )
-                        }
-
-                        AnimatedVisibility(
-                            visible = showEmojiGrid,
-                            enter = if (reduceMotion) EnterTransition.None else fadeIn() + expandVertically(),
-                            exit = if (reduceMotion) ExitTransition.None else fadeOut() + shrinkVertically()
-                        ) {
-                            // Grid de 6 columnas
-                            val rows = emojiOptions.chunked(6)
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                rows.forEach { row ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceEvenly
-                                    ) {
-                                        row.forEach { emoji ->
-                                            Surface(
-                                                modifier = Modifier
-                                                    .size(48.dp)
-                                                    // selected: el emoji ya elegido solo se distinguía por
-                                                    // color/borde visual, mudo para TalkBack (panel
-                                                    // 2026-09-11, IMPORTANTE, mismo patrón que CreateRewardScreen).
-                                                    .semantics {
-                                                        contentDescription = s("edit_profile_emoji_content_desc").replace("%s", emoji)
-                                                        selected = avatarEmoji == emoji
-                                                    }
-                                                    .clickable(role = Role.Button) {
-                                                        avatarEmoji = emoji
-                                                        showEmojiGrid = false
-                                                    },
-                                                shape = MaterialTheme.shapes.medium,
-                                                color = if (avatarEmoji == emoji)
-                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                                else
-                                                    MaterialTheme.colorScheme.surfaceVariant,
-                                                border = if (avatarEmoji == emoji)
-                                                    androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                                                else null
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Text(emoji, style = MaterialTheme.typography.titleLarge)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        EmojiPicker(
+                            currentEmoji = avatarEmoji,
+                            onEmojiSelected = { avatarEmoji = it },
+                            buttonLabel = if (avatarEmoji.isNotEmpty())
+                                s("edit_profile_avatar_selected").replace("%s", avatarEmoji)
+                            else
+                                s("edit_profile_select_emoji"),
+                            emojiContentDesc = s("edit_profile_emoji_content_desc"),
+                        )
 
                         HorizontalDivider()
 

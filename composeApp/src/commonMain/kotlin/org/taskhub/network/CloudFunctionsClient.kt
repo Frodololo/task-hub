@@ -45,8 +45,7 @@ class CloudFunctionsClient(
      * `FirestoreException.code` = el `status` de la función (p.ej.
      * `"ABORTED"`/`"FAILED_PRECONDITION"`) y `.message` = el mensaje. Este
      * método solo tiene que traducir esa excepción a [CloudFunctionException]
-     * — no hace falta (ni es alcanzable) el parseo manual de
-     * `CallableError`/`CallableErrorBody` que sugiere el borrador de diseño.
+     * — no hace falta (ni es alcanzable) un parseo manual del body de error.
      */
     suspend inline fun <reified T, reified R> call(name: String, data: T): R {
         val response = try {
@@ -56,7 +55,13 @@ class CloudFunctionsClient(
                 setBody(CallableRequest(data))
             }
         } catch (e: FirestoreException) {
-            throw CloudFunctionException(e.code ?: "unknown", e.statusCode, e.message)
+            // Firestore (y las transacciones que usan las Cloud Functions)
+            // responden 409 en conflictos de concurrencia sin `code` simbólico
+            // en el body — sin este mapeo caían en "unknown" y
+            // [errorCategory] no podía ofrecer "reintentar" como con un
+            // ABORTED explícito.
+            val status = e.code ?: if (e.statusCode == 409) "ABORTED" else "unknown"
+            throw CloudFunctionException(status, e.statusCode, e.message)
         }
         return response.body<CallableResult<R>>().result
     }

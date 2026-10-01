@@ -43,6 +43,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import org.taskhub.network.models.SpaceType
 import org.taskhub.ui.components.LocalAppSettings
 import org.taskhub.ui.components.TaskHubTopBar
+import org.taskhub.ui.components.EmojiPicker
 import org.taskhub.ui.components.filterChipCheckIcon
 import org.taskhub.ui.i18n.AppStrings
 import org.taskhub.ui.models.HouseholdScreenModel
@@ -74,10 +75,6 @@ class CreateHouseholdScreen : Screen {
         var customEmoji by remember { mutableStateOf<String?>(null) }
         val focusManager = LocalFocusManager.current
 
-        val emojiOptions = remember {
-            listOf("🧑", "👩", "👨", "👦", "👧", "🧒", "🐱", "🐶", "🐼", "🦊", "🐸", "🐵",
-                   "🌟", "🔥", "💎", "🎮", "📚", "🎨", "⚽", "🍕", "☕", "🦸", "🧙", "🤖")
-        }
         val effectiveEmoji = customEmoji ?: selectedType.emoji
 
         LaunchedEffect(Unit) {
@@ -186,63 +183,14 @@ class CreateHouseholdScreen : Screen {
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                var showEmojiGrid by remember { mutableStateOf(false) }
-                val reduceMotion = shouldReduceMotion()
-                OutlinedButton(
-                    onClick = { showEmojiGrid = !showEmojiGrid },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Muestra siempre el emoji vigente (el del SpaceType si no se ha
-                    // elegido otro, o el elegido) en vez de un texto genérico "Elegir
-                    // emoji" que no reflejaba que ya había uno por defecto (panel v21).
-                    Text(s("create_household_emoji_selected").replace("%s", effectiveEmoji))
-                }
+                                EmojiPicker(
+                                    currentEmoji = effectiveEmoji,
+                                    onEmojiSelected = { customEmoji = it },
+                                    buttonLabel = s("create_household_emoji_selected").replace("%s", effectiveEmoji),
+                                    emojiContentDesc = s("edit_profile_emoji_content_desc"),
+                                )
 
-                AnimatedVisibility(
-                    visible = showEmojiGrid,
-                    enter = if (reduceMotion) EnterTransition.None else fadeIn() + expandVertically(),
-                    exit = if (reduceMotion) ExitTransition.None else fadeOut() + shrinkVertically()
-                ) {
-                    // Grid de 6 columnas (mismo patrón que EditProfileScreen).
-                    val rows = emojiOptions.chunked(6)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rows.forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                row.forEach { emoji ->
-                                    Surface(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .semantics {
-                                                contentDescription = s("edit_profile_emoji_content_desc").replace("%s", emoji)
-                                                selected = effectiveEmoji == emoji
-                                            }
-                                            .clickable(role = Role.Button) {
-                                                customEmoji = emoji
-                                                showEmojiGrid = false
-                                            },
-                                        shape = MaterialTheme.shapes.medium,
-                                        color = if (effectiveEmoji == emoji)
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                        else
-                                            MaterialTheme.colorScheme.surfaceVariant,
-                                        border = if (effectiveEmoji == emoji)
-                                            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                                        else null
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text(emoji, style = MaterialTheme.typography.titleLarge)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
+                                Spacer(modifier = Modifier.height(24.dp))
 
                 OutlinedTextField(
                     value = householdName,

@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -83,29 +84,45 @@ internal data class DayTaskEntry(
 // auditados). Sustituidos por la paleta semántica (éxito/error/info), común
 // a los 3 temas y ya auditada ≥4.5:1 en las 6 combinaciones.
 
+/** Agrupa los 3 colores derivados del estado de [DayTaskEntry] — ver [DayTaskEntry.taskColors]. */
+private data class DayTaskEntryColors(
+    val dot: Color,
+    val container: Color,
+    val onContainer: Color
+)
+
 @Composable
-private fun DayTaskEntry.dotColor(): Color = when {
-    isCompleted -> MaterialTheme.semanticColors.success
-    isOverdue -> MaterialTheme.colorScheme.error
-    isDueToday -> MaterialTheme.semanticColors.info
-    else -> MaterialTheme.colorScheme.primary
+private fun DayTaskEntry.taskColors(): DayTaskEntryColors = when {
+    isCompleted -> DayTaskEntryColors(
+        dot = MaterialTheme.semanticColors.success,
+        container = MaterialTheme.semanticColors.successContainer,
+        onContainer = MaterialTheme.semanticColors.onSuccessContainer
+    )
+    isOverdue -> DayTaskEntryColors(
+        dot = MaterialTheme.colorScheme.error,
+        container = MaterialTheme.colorScheme.errorContainer,
+        onContainer = MaterialTheme.colorScheme.onErrorContainer
+    )
+    isDueToday -> DayTaskEntryColors(
+        dot = MaterialTheme.semanticColors.info,
+        container = MaterialTheme.semanticColors.infoContainer,
+        onContainer = MaterialTheme.semanticColors.onInfoContainer
+    )
+    else -> DayTaskEntryColors(
+        dot = MaterialTheme.colorScheme.primary,
+        container = MaterialTheme.colorScheme.primaryContainer,
+        onContainer = MaterialTheme.colorScheme.onPrimaryContainer
+    )
 }
 
 @Composable
-private fun DayTaskEntry.containerColor(): Color = when {
-    isCompleted -> MaterialTheme.semanticColors.successContainer
-    isOverdue -> MaterialTheme.colorScheme.errorContainer
-    isDueToday -> MaterialTheme.semanticColors.infoContainer
-    else -> MaterialTheme.colorScheme.primaryContainer
-}
+private fun DayTaskEntry.dotColor(): Color = taskColors().dot
 
 @Composable
-private fun DayTaskEntry.onContainerColor(): Color = when {
-    isCompleted -> MaterialTheme.semanticColors.onSuccessContainer
-    isOverdue -> MaterialTheme.colorScheme.onErrorContainer
-    isDueToday -> MaterialTheme.semanticColors.onInfoContainer
-    else -> MaterialTheme.colorScheme.onPrimaryContainer
-}
+private fun DayTaskEntry.containerColor(): Color = taskColors().container
+
+@Composable
+private fun DayTaskEntry.onContainerColor(): Color = taskColors().onContainer
 
 // ────────────────────────────────────────────────────────────
 //  CalendarScreen
@@ -946,7 +963,9 @@ private fun PendingWithoutDueDateSection(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .semantics { heading() }
         )
         Text(
             text = s("calendar_pending_section_subtitle"),
@@ -1089,7 +1108,9 @@ private fun OverdueSection(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .semantics { heading() }
         )
         Spacer(Modifier.height(8.dp))
 

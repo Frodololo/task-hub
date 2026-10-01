@@ -52,30 +52,6 @@ fun spaceTypeFromFirestoreValue(value: String?): SpaceType = when (value) {
     }
 }
 
-// ── Request DTOs ──────────────────────────────────────────
-// NOTA: estos 3 DTOs no tienen ningún call-site en el resto del código (no
-// hay referencias a CreateHouseholdRequest/JoinHouseholdRequest/
-// CreateMemberRequest fuera de este archivo) — parecen vestigios de un diseño
-// previo con un backend intermedio (antes de hablar con Firestore REST
-// directamente, ver KDoc de FirestoreRepository: "no Ktor server needed").
-// Se documentan tal cual pero podrían eliminarse en una limpieza futura.
-
-/** Vestigio sin uso — ver nota de arriba. Cuerpo de una petición de creación de hogar. */
-@Serializable
-data class CreateHouseholdRequest(val name: String)
-
-/** Vestigio sin uso — ver nota de arriba. Cuerpo de una petición de unión a hogar por código de invitación. */
-@Serializable
-data class JoinHouseholdRequest(val inviteCode: String)
-
-/** Vestigio sin uso — ver nota de arriba. Cuerpo de una petición de creación de miembro. */
-@Serializable
-data class CreateMemberRequest(
-    val displayName: String,
-    val role: String = "child",
-    val avatarUrl: String? = null
-)
-
 // ── Response DTOs ─────────────────────────────────────────
 
 /** Documento `households/{id}`. Un hogar (espacio compartido de tareas/miembros/recompensas). */
@@ -151,6 +127,7 @@ data class MemberResponse(
  * añadir foto, bio, preferencias, etc. solo requiere añadir campos aquí y en
  * [org.taskhub.network.FirestoreRepository.upsertUserProfile].
  */
+@Immutable
 @Serializable
 data class UserProfile(
     /** UID de Firebase Auth (Google). */
@@ -179,6 +156,7 @@ data class ErrorResponse(val error: String)
  * elemento de la lista [TaskResponse.assignmentRotation] (NO es un documento
  * propio de Firestore; se serializa embebido dentro del documento de la tarea).
  */
+@Immutable
 @Serializable
 data class AssignmentSlot(
     /** 1=Lunes..7=Domingo */
@@ -191,6 +169,7 @@ data class AssignmentSlot(
  * [TaskResponse.subtasks] (NO es un documento propio de Firestore; se
  * serializa embebido dentro del documento de la tarea).
  */
+@Immutable
 @Serializable
 data class Subtask(
     val id: String,
@@ -316,6 +295,7 @@ data class TaskAssignmentResponse(
 // ── Comments DTO ─────────────────────────────────────────
 
 /** Documento `households/{householdId}/tasks/{taskId}/comments/{id}`. Comentario de un miembro en una tarea. */
+@Immutable
 @Serializable
 data class CommentResponse(
     val id: String,
@@ -335,6 +315,7 @@ data class CommentResponse(
 // ── Message DTO ────────────────────────────────────────────
 
 /** Documento `households/{householdId}/messages/{id}`. Mensaje del chat del hogar. */
+@Immutable
 @Serializable
 data class MessageResponse(
     val id: String,
@@ -352,6 +333,7 @@ data class MessageResponse(
  * StatsScreen (independiente del estado actual de la tarea/asignación, que
  * puede haberse revertido/reasignado después).
  */
+@Immutable
 @Serializable
 data class TaskHistoryResponse(
     val id: String,
@@ -438,6 +420,7 @@ data class RewardResponse(
  * Registro histórico de un canje de recompensa (puntos ya descontados al
  * miembro en el momento del canje).
  */
+@Immutable
 @Serializable
 data class RewardRedemption(
     val id: String,
