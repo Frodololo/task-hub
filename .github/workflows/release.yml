@@ -48,6 +48,12 @@ jobs:
         with:
           validate-wrappers: false
 
+      - name: Compile Android debug
+        run: ./gradlew :composeApp:compileDebugKotlinAndroid --console=plain
+
+      - name: Run JVM tests
+        run: ./gradlew :composeApp:jvmTest --console=plain
+
       # ── Preparar keystore de subida ─────────────────────
       - name: Decode upload keystore
         run: |

@@ -14,13 +14,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -122,7 +127,11 @@ fun SettingsSheet(
         Spacer(Modifier.height(24.dp))
 
         // ── Cuenta de Google ──────────────────────────────
-        SettingsSection(title = s("settings_account_title")) {
+        ExpandableSection(
+            title = s("settings_account_title"),
+            icon = Icons.Filled.Person,
+            defaultExpanded = true
+        ) {
             when (val state = authState) {
                 is GoogleAuthState.SignedIn -> {
                     Text(
@@ -209,18 +218,32 @@ fun SettingsSheet(
             ) {
                 Text(s("settings_account_edit_profile"))
             }
+
+            // ── Eliminar cuenta (RGPD) ─────────────────────
+            // Vive en el grupo Cuenta junto al resto de acciones de cuenta
+            // (antes vivía suelta al final de Privacidad y datos).
+            Spacer(Modifier.height(16.dp))
+            DeleteAccountSection(
+                s = s,
+                authManager = authManager,
+                navigator = navigator,
+                onDismiss = callbacks.onDismiss
+            )
         }
+
+        Spacer(Modifier.height(8.dp))
 
         // Solo Android puede vincular Google Calendar hoy (ver
         // hasCalendarSupport en platform/Platform.kt) — en JVM/wasmJs,
         // getGoogleCalendarAccessToken() está hardcodeado a null, así que
         // mostrar esta sección solo llevaba al usuario a completar un flujo
         // OAuth entero (en desktop, real) para acabar viendo un error.
-        if (hasCalendarSupport) {
-        Spacer(Modifier.height(24.dp))
-
-        // ── Google Calendar ──────────────────────────────
-        SettingsSection(title = s("calendar_settings_title")) {
+        // ── Calendario ────────────────────────────────────
+        ExpandableSection(
+            title = s("calendar_settings_title"),
+            icon = Icons.Filled.DateRange,
+            isVisible = hasCalendarSupport
+        ) {
             var isCalendarLinked by remember { mutableStateOf(settingsStore.hasGoogleLinked()) }
             var isCalendarSyncEnabled by remember { mutableStateOf(settingsStore.isCalendarSyncEnabled()) }
             var showUnlinkConfirm by remember { mutableStateOf(false) }
@@ -356,16 +379,19 @@ fun SettingsSheet(
                 }
             }
         }
-        }
 
+        Spacer(Modifier.height(8.dp))
+
+        // ── Notificaciones y sonido ────────────────────────
+        ExpandableSection(
+            title = s("settings_notifications_section"),
+            icon = Icons.Filled.Notifications
+        ) {
         // Solo Android agenda recordatorios locales reales hoy (ver
         // hasNotificationSupport en platform/Platform.kt) — en iOS/JVM/web,
         // createNotificationScheduler() siempre es un no-op, así que este
         // interruptor no tenía ningún efecto ahí.
         if (hasNotificationSupport) {
-        Spacer(Modifier.height(24.dp))
-
-        // ── Notifications ────────────────────────────────
         SettingsSection(title = s("settings_notifications")) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -394,7 +420,85 @@ fun SettingsSheet(
         }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+
+        // ── Sound & Vibration ────────────────────────────
+        SettingsSection(title = s("settings_sound_vibration")) {
+            var soundEnabled by remember {
+                mutableStateOf(settingsStore.isSoundEnabled())
+            }
+            var vibrationEnabled by remember {
+                mutableStateOf(settingsStore.isVibrationEnabled())
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = s("settings_sound"),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = s("settings_sound_desc"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = soundEnabled,
+                    onCheckedChange = {
+                        soundEnabled = it
+                        settingsStore.setSoundEnabled(it)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = s("settings_vibration"),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = s("settings_vibration_desc"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = vibrationEnabled,
+                    onCheckedChange = {
+                        vibrationEnabled = it
+                        settingsStore.setVibrationEnabled(it)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+        }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // ── Personalización ────────────────────────────────
+        ExpandableSection(
+            title = s("settings_personalization_section"),
+            icon = Icons.Filled.Settings
+        ) {
 
         // ── Theme ────────────────────────────────────────
         // RadioOptionRow (no dropdown): consistente con los selectores de
@@ -476,77 +580,6 @@ fun SettingsSheet(
                         }
                     )
                 }
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // ── Sound & Vibration ────────────────────────────
-        SettingsSection(title = s("settings_sound_vibration")) {
-            var soundEnabled by remember {
-                mutableStateOf(settingsStore.isSoundEnabled())
-            }
-            var vibrationEnabled by remember {
-                mutableStateOf(settingsStore.isVibrationEnabled())
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = s("settings_sound"),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = s("settings_sound_desc"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = soundEnabled,
-                    onCheckedChange = {
-                        soundEnabled = it
-                        settingsStore.setSoundEnabled(it)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = s("settings_vibration"),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = s("settings_vibration_desc"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = vibrationEnabled,
-                    onCheckedChange = {
-                        vibrationEnabled = it
-                        settingsStore.setVibrationEnabled(it)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                )
             }
         }
 
@@ -667,33 +700,15 @@ fun SettingsSheet(
                 )
             }
         }
-
-        // ── Export CSV ───────────────────────────────────
-        if (callbacks.showExportCsv) {
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = {
-                    callbacks.onDismiss()
-                    callbacks.onExportCsv()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(
-                    text = s("settings_export_csv"),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(8.dp))
 
         // ── Privacidad y datos (enlace a la política + RGPD) ──────────────
-        // Antes el enlace de privacidad y "eliminar cuenta" quedaban sueltos
-        // sin cabecera de sección, inconsistente con el resto del sheet (7
-        // secciones más arriba, todas con SettingsSection) — panel v4,
-        // Estética hallazgo #2 IMPORTANTE.
-        SettingsSection(title = s("settings_privacy_data_title")) {
+        ExpandableSection(
+            title = s("settings_privacy_data_title"),
+            icon = Icons.Filled.Lock
+        ) {
             OutlinedButton(
                 onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                 modifier = Modifier.fillMaxWidth(),
@@ -738,15 +753,23 @@ fun SettingsSheet(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // ── Eliminar cuenta (RGPD) ────────────────────────
-            DeleteAccountSection(
-                s = s,
-                authManager = authManager,
-                navigator = navigator,
-                onDismiss = callbacks.onDismiss
-            )
+            // ── Export CSV ───────────────────────────────────
+            if (callbacks.showExportCsv) {
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        callbacks.onDismiss()
+                        callbacks.onExportCsv()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Text(
+                        text = s("settings_export_csv"),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -764,7 +787,62 @@ fun SettingsSheet(
     }
 }
 
-/** Bloque de sección con título en `primary` + contenido, reutilizado por todas las secciones de [SettingsSheet]. */
+/**
+ * Grupo de secciones de [SettingsSheet] en formato acordeón: cabecera
+ * clicable (icono + título + chevron, vía [ExpandableSectionHeader]) que
+ * expande/contrae su contenido. El cambio es instantáneo (sin
+ * `AnimatedVisibility`) para que siga siendo compatible con Modo Simple sin
+ * necesitar su propio toggle.
+ *
+ * @param isVisible si es `false`, el grupo entero no se muestra (p. ej. grupos
+ *   condicionados a soporte de plataforma como Calendario).
+ * @param defaultExpanded estado inicial al abrir la hoja de ajustes; el resto
+ *   de grupos arrancan contraídos.
+ */
+@Composable
+private fun ExpandableSection(
+    title: String,
+    icon: ImageVector,
+    isVisible: Boolean = true,
+    defaultExpanded: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (!isVisible) return
+    var expanded by remember { mutableStateOf(defaultExpanded) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ExpandableSectionHeader(
+            expanded = expanded,
+            onToggle = { expanded = !expanded }
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 8.dp)
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+/** Bloque de sección con título en `primary` + contenido, reutilizado por las sub-secciones de un [ExpandableSection]. */
 @Composable
 private fun SettingsSection(
     title: String,

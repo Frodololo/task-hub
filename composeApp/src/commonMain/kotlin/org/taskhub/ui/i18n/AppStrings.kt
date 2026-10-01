@@ -33,6 +33,8 @@ object AppStrings {
 
             // Settings
             "settings_title" to "⚙️ Ajustes",
+            "settings_personalization_section" to "Personalización",
+            "settings_notifications_section" to "Notificaciones y sonido",
             "settings_notifications" to "🔔 Notificaciones",
             "settings_notifications_desc" to "Recordatorios, tareas asignadas y mensajes nuevos",
             "settings_theme" to "🎨 Tema",
@@ -769,6 +771,8 @@ object AppStrings {
 
             // Settings
             "settings_title" to "⚙️ Settings",
+            "settings_personalization_section" to "Personalization",
+            "settings_notifications_section" to "Notifications & sound",
             "settings_notifications" to "🔔 Notifications",
             "settings_notifications_desc" to "Reminders, assigned tasks and new messages",
             "settings_theme" to "🎨 Theme",
