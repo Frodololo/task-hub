@@ -75,7 +75,7 @@ fun RecurrenceNextPreview(
 
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            imageVector = Icons.Default.DateRange,
+            imageVector = Icons.Filled.DateRange,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary
         )

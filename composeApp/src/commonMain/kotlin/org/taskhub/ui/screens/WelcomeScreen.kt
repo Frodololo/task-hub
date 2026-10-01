@@ -88,7 +88,7 @@ class WelcomeScreen : Screen {
                     title = "Task Hub",
                     actions = {
                         IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = s("profile_settings_label"))
+                            Icon(Icons.Filled.Settings, contentDescription = s("profile_settings_label"))
                         }
                     }
                 )

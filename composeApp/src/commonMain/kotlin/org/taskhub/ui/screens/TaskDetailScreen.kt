@@ -191,13 +191,13 @@ data class TaskDetailScreen(
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Edit, contentDescription = s("task_detail_edit_content_desc"))
+                            Icon(Icons.Filled.Edit, contentDescription = s("task_detail_edit_content_desc"))
                         }
                         IconButton(
                             enabled = actionState !is TaskActionState.Loading,
                             onClick = { showDeleteDialog = true }
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = s("common_delete"))
+                            Icon(Icons.Filled.Delete, contentDescription = s("common_delete"))
                         }
                     }
                 )
@@ -309,7 +309,7 @@ data class TaskDetailScreen(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
+                                        imageVector = Icons.Filled.Close,
                                         contentDescription = s("error_icon_content_desc"),
                                         tint = MaterialTheme.colorScheme.error
                                     )
@@ -462,7 +462,7 @@ private fun TaskDetailContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Filled.Close,
                             contentDescription = s("error_icon_content_desc"),
                             tint = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -914,7 +914,7 @@ private fun TaskDetailContent(
                             showChangeWhoDialog = true
                         }) {
                             Icon(
-                                Icons.Default.Edit,
+                                Icons.Filled.Edit,
                                 contentDescription = s("task_detail_change_completer_desc"),
                                 modifier = Modifier.size(18.dp)
                             )
@@ -1093,7 +1093,7 @@ private fun TaskDetailContent(
                             )
                             IconButton(onClick = onDismissSendCommentError) {
                                 Icon(
-                                    Icons.Default.Close,
+                                    Icons.Filled.Close,
                                     contentDescription = s("common_dismiss"),
                                     tint = MaterialTheme.colorScheme.onErrorContainer
                                 )

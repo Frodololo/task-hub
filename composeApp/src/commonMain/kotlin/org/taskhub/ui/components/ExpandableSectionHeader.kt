@@ -85,7 +85,7 @@ fun ExpandableSectionHeader(
             label = "chevronRotation"
         )
         Icon(
-            imageVector = Icons.Default.KeyboardArrowDown,
+            imageVector = Icons.Filled.KeyboardArrowDown,
             contentDescription = AppStrings.get(if (expanded) "common_collapse" else "common_expand", lang),
             tint = chevronTint,
             modifier = Modifier

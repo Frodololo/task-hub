@@ -9,6 +9,7 @@ import platform.Security.kSecRandomDefault
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
+import platform.UIKit.UIWindowScene
 import platform.UIKit.popoverPresentationController
 
 /**
@@ -44,7 +45,10 @@ actual fun shareText(text: String, title: String): Boolean {
 
 /** Recorre `presentedViewController` desde la key window hasta el controlador visible más arriba. */
 private fun topMostViewController(): UIViewController? {
-    var topController = UIApplication.sharedApplication.keyWindow?.rootViewController
+    val window = UIApplication.sharedApplication.connectedScenes
+        .filterIsInstance<UIWindowScene>()
+        .firstOrNull()?.windows?.firstOrNull { it.isKeyWindow }
+    var topController = window?.rootViewController
     while (topController?.presentedViewController != null) {
         topController = topController.presentedViewController
     }

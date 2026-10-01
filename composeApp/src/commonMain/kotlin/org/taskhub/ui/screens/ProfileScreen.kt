@@ -104,7 +104,7 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
                     item {
                         HouseholdProfileCard(
                             household = personalHousehold,
-                            icon = Icons.Default.Person,
+                            icon = Icons.Filled.Person,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -114,7 +114,7 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
                 items(sharedHouseholds, key = { it.id }) { household ->
                     HouseholdProfileCard(
                         household = household,
-                        icon = Icons.Default.Edit,
+                        icon = Icons.Filled.Edit,
                         // Coral500 fijo teñía el icono con 2.60-2.81:1 en los 3 temas
                         // claros (falla el umbral 3:1 de icono significativo, WCAG
                         // 1.4.11) — colorScheme.tertiary ya está auditado en los 6
@@ -132,7 +132,7 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
                         onClick = { navigator.push(CreateHouseholdScreen()) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = s("create_household_title"))
+                        Icon(Icons.Filled.Add, contentDescription = s("create_household_title"))
                         Spacer(Modifier.width(8.dp))
                         Text(s("create_household_title"))
                     }
@@ -143,7 +143,7 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
                         onClick = { navigator.push(JoinHouseholdScreen()) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Home, contentDescription = s("welcome_join"))
+                        Icon(Icons.Filled.Home, contentDescription = s("welcome_join"))
                         Spacer(Modifier.width(8.dp))
                         Text(s("welcome_join"))
                     }
@@ -157,7 +157,7 @@ class ProfileScreen(private val households: List<SavedHousehold>) : Screen {
                         onClick = { showSettings = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Settings, contentDescription = s("profile_settings_label"))
+                        Icon(Icons.Filled.Settings, contentDescription = s("profile_settings_label"))
                         Spacer(Modifier.width(8.dp))
                         Text(s("profile_settings_label"))
                     }

@@ -238,10 +238,10 @@ data class TaskListScreen(
                     scrollBehavior = topBarScrollBehavior,
                     actions = {
                         IconButton(onClick = { model.loadTasks(householdId) }) {
-                            Icon(Icons.Default.Refresh, contentDescription = s("task_list_refresh_content_desc"))
+                            Icon(Icons.Filled.Refresh, contentDescription = s("task_list_refresh_content_desc"))
                         }
                         IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = s("profile_settings_label"))
+                            Icon(Icons.Filled.Settings, contentDescription = s("profile_settings_label"))
                         }
                         TextButton(
                             onClick = { navigator.push(CreateTaskScreen(householdId, currentMemberId ?: "")) },
@@ -319,7 +319,7 @@ data class TaskListScreen(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
+                                        imageVector = Icons.Filled.Close,
                                         contentDescription = s("error_icon_content_desc"),
                                         tint = MaterialTheme.colorScheme.error
                                     )
@@ -1055,7 +1055,7 @@ private fun SearchBar(
         placeholder = { Text(s("task_list_search_placeholder")) },
         leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = Icons.Filled.Search,
                 contentDescription = s("task_list_search_content_desc"),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1064,7 +1064,7 @@ private fun SearchBar(
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = Icons.Filled.Close,
                         contentDescription = s("task_list_clear_search_content_desc"),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1139,7 +1139,7 @@ private fun FilterChipsRow(
             // siempre a tamaño completo aunque se usara ocasionalmente.
             IconButton(onClick = onToggleSearch) {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = Icons.Filled.Search,
                     contentDescription = s(if (searchExpanded) "common_collapse" else "task_list_search_content_desc"),
                     tint = if (searchExpanded || hasActiveSearch) {
                         MaterialTheme.colorScheme.primary

@@ -413,7 +413,7 @@ private fun MemberCard(
                         enabled = !actionPending
                     ) {
                         Icon(
-                            Icons.Default.Delete,
+                            Icons.Filled.Delete,
                             contentDescription = s("member_remove_action_named").replace("%s", member.displayName),
                             tint = MaterialTheme.colorScheme.error
                         )

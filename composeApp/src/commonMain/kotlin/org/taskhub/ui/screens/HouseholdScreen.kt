@@ -39,6 +39,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.taskhub.network.models.MemberResponse
 import androidx.compose.material.icons.Icons
@@ -94,6 +95,7 @@ data class HouseholdScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val coroutineScope = rememberCoroutineScope()
         val householdModel = koinScreenModel<HouseholdScreenModel>()
         val memberModel = koinScreenModel<MemberScreenModel>()
         val notificationModel = koinScreenModel<NotificationScreenModel>()
@@ -295,7 +297,17 @@ data class HouseholdScreen(
                     householdModel.deleteHousehold(
                         householdId = householdId,
                         onSuccess = {
-                            navigator.replaceAll(HomeScreen())
+                            // Confirma la acción destructiva antes de navegar: si el
+                            // replaceAll se disparara fuera de este launch, se ejecutaría
+                            // sincrónicamente y desmontaría esta pantalla (y su
+                            // SnackbarHost) antes de que el snackbar llegase a pintarse.
+                            coroutineScope.launch {
+                                householdSnackbarHostState.showSnackbar(
+                                    message = s("household_deleted_success"),
+                                    duration = SnackbarDuration.Short
+                                )
+                                navigator.replaceAll(HomeScreen())
+                            }
                         },
                         onError = { msg ->
                             isDeleting = false
@@ -318,7 +330,13 @@ data class HouseholdScreen(
                     householdModel.leaveHousehold(
                         householdId = householdId,
                         onSuccess = {
-                            navigator.replaceAll(HomeScreen())
+                            coroutineScope.launch {
+                                householdSnackbarHostState.showSnackbar(
+                                    message = s("household_left_success"),
+                                    duration = SnackbarDuration.Short
+                                )
+                                navigator.replaceAll(HomeScreen())
+                            }
                         },
                         onError = { msg ->
                             isLeaving = false
@@ -415,7 +433,7 @@ data class HouseholdScreen(
                                     }
                                 }
                             ) {
-                                Icon(Icons.Default.Notifications, contentDescription = s("notifications_title"))
+                                Icon(Icons.Filled.Notifications, contentDescription = s("notifications_title"))
                             }
                             if (notificationUnreadCount > 0) {
                                 PointsBadge(
@@ -428,7 +446,7 @@ data class HouseholdScreen(
                         }
                         // Settings
                         IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = s("profile_settings_label"))
+                            Icon(Icons.Filled.Settings, contentDescription = s("profile_settings_label"))
                         }
                         // Delete: solo el owner del hogar la ve/ejecuta (ver isOwner arriba).
                         if (isDeleting || isLeaving) {
@@ -439,7 +457,7 @@ data class HouseholdScreen(
                             )
                         } else if (isOwner) {
                             IconButton(onClick = { showConfirmDialog1 = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = s("household_delete_title"))
+                                Icon(Icons.Filled.Delete, contentDescription = s("household_delete_title"))
                             }
                         }
                     }
@@ -780,7 +798,7 @@ data class HouseholdScreen(
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.Close,
+                                            imageVector = Icons.Filled.Close,
                                             contentDescription = s("error_icon_content_desc"),
                                             tint = MaterialTheme.colorScheme.error
                                         )

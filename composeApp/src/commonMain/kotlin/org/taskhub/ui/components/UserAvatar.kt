@@ -29,7 +29,7 @@ import coil3.compose.AsyncImage
 
 /**
  * Avatar reutilizable con orden de prioridad: foto ([avatarUrl]) > emoji
- * ([fallbackEmoji]) > inicial de [displayName] > icono [Icons.Default.Person].
+ * ([fallbackEmoji]) > inicial de [displayName] > icono [Icons.Filled.Person].
  *
  * Centraliza el render de avatar usado en Ranking, HouseholdScreen,
  * TaskDetailScreen, EditProfileScreen, ProfileScreen y PublicProfileScreen,
@@ -86,7 +86,7 @@ fun UserAvatar(
             )
 
             else -> Icon(
-                imageVector = Icons.Default.Person,
+                imageVector = Icons.Filled.Person,
                 contentDescription = contentDescription
             )
         }

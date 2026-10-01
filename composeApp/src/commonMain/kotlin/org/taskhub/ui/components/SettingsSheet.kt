@@ -162,7 +162,7 @@ fun SettingsSheet(
                 is GoogleAuthState.Error -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Filled.Close,
                             contentDescription = s("error_icon_content_desc"),
                             tint = MaterialTheme.colorScheme.error
                         )
@@ -699,7 +699,7 @@ fun SettingsSheet(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large
             ) {
-                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(s("settings_privacy_policy"))
             }

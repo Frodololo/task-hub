@@ -241,7 +241,7 @@ data class CreateProfileScreen(val householdId: String) : Screen {
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Filled.Close,
                             contentDescription = s("error_icon_content_desc"),
                             tint = MaterialTheme.colorScheme.error
                         )

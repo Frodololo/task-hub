@@ -89,7 +89,7 @@ internal fun StatsBody(householdId: String, memberId: String, statsModel: StatsS
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
+                                        imageVector = Icons.Filled.Close,
                                         contentDescription = s("error_icon_content_desc"),
                                         tint = MaterialTheme.colorScheme.error
                                     )

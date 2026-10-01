@@ -97,7 +97,7 @@ fun DeleteAccountSection(
             // Icono real en vez del emoji que llevaba el texto de AppStrings
             // — coherente con el patrón ya usado para borrar en
             // HouseholdMemberList/HouseholdScreen (panel v4, Estética #2).
-            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(s("settings_delete_account_button"))
         }

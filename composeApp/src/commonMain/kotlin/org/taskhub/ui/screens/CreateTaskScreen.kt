@@ -374,7 +374,7 @@ data class CreateTaskScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
+                                        imageVector = Icons.Filled.Close,
                                         contentDescription = s("error_icon_content_desc"),
                                         tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
@@ -502,7 +502,7 @@ data class CreateTaskScreen(
                                         }
                                     },
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = s("create_task_add_item"))
+                                    Icon(Icons.Filled.Add, contentDescription = s("create_task_add_item"))
                                 }
                             }
                         }
@@ -535,7 +535,7 @@ data class CreateTaskScreen(
                                             contentColor = MaterialTheme.colorScheme.error
                                         )
                                     ) {
-                                        Icon(Icons.Default.Close, contentDescription = s("common_delete"))
+                                        Icon(Icons.Filled.Close, contentDescription = s("common_delete"))
                                     }
                                 }
                             }
@@ -777,7 +777,7 @@ data class CreateTaskScreen(
                                             }
                                         },
                                     ) {
-                                        Icon(Icons.Default.Add, contentDescription = s("create_task_add_tag"))
+                                        Icon(Icons.Filled.Add, contentDescription = s("create_task_add_tag"))
                                     }
                                 }
                             }
@@ -797,7 +797,7 @@ data class CreateTaskScreen(
                                             label = { Text(tag) },
                                             trailingIcon = {
                                                 Icon(
-                                                    Icons.Default.Close,
+                                                    Icons.Filled.Close,
                                                     contentDescription = null,
                                                     modifier = Modifier.size(FilterChipDefaults.IconSize)
                                                 )
@@ -1009,7 +1009,7 @@ data class CreateTaskScreen(
                                         onClick = { showDatePicker = true },
                                         modifier = Modifier.weight(1f).height(56.dp)
                                     ) {
-                                        Icon(Icons.Default.DateRange, contentDescription = s("create_task_pick_date"))
+                                        Icon(Icons.Filled.DateRange, contentDescription = s("create_task_pick_date"))
                                         Spacer(Modifier.width(8.dp))
                                         Text(
                                             text = if (deadlineDay.isBlank()) s("create_task_pick_date") else deadlineDay,
@@ -1106,7 +1106,7 @@ data class CreateTaskScreen(
                                                                 maxLines = 1,
                                                                 overflow = TextOverflow.Ellipsis
                                                             )
-                                                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
                                                         }
 
                                                         DropdownMenu(

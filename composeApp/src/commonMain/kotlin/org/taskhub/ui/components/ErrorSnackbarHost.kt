@@ -65,7 +65,7 @@ fun ErrorAwareSnackbarHost(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = Icons.Filled.Close,
                         contentDescription = errorIconContentDescription,
                         tint = MaterialTheme.colorScheme.onErrorContainer
                     )

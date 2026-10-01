@@ -116,10 +116,10 @@ class HomeScreen : Screen {
                         IconButton(onClick = {
                             navigator.push(ProfileScreen(households))
                         }) {
-                            Icon(Icons.Default.Person, s("profile_title"))
+                            Icon(Icons.Filled.Person, s("profile_title"))
                         }
                         IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Default.Settings, s("profile_settings_label"))
+                            Icon(Icons.Filled.Settings, s("profile_settings_label"))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -144,7 +144,7 @@ class HomeScreen : Screen {
                                 },
                                 containerColor = MaterialTheme.colorScheme.secondary,
                                 contentColor = MaterialTheme.colorScheme.onSecondary,
-                                icon = { Icon(Icons.Default.Add, contentDescription = s("welcome_create"), modifier = Modifier.size(20.dp)) },
+                                icon = { Icon(Icons.Filled.Add, contentDescription = s("welcome_create"), modifier = Modifier.size(20.dp)) },
                                 text = { Text(s("welcome_create"), fontWeight = FontWeight.SemiBold) }
                             )
                             Spacer(Modifier.height(12.dp))
@@ -155,7 +155,7 @@ class HomeScreen : Screen {
                                 },
                                 containerColor = MaterialTheme.colorScheme.tertiary,
                                 contentColor = MaterialTheme.colorScheme.onTertiary,
-                                icon = { Icon(Icons.Default.Home, contentDescription = s("home_fab_join_space"), modifier = Modifier.size(20.dp)) },
+                                icon = { Icon(Icons.Filled.Home, contentDescription = s("home_fab_join_space"), modifier = Modifier.size(20.dp)) },
                                 text = { Text(s("home_fab_join_space"), fontWeight = FontWeight.SemiBold) }
                             )
                             Spacer(Modifier.height(12.dp))
@@ -166,9 +166,9 @@ class HomeScreen : Screen {
                         containerColor = MaterialTheme.colorScheme.primary
                     ) {
                         if (showFabMenu) {
-                            Icon(Icons.Default.Close, s("settings_close"))
+                            Icon(Icons.Filled.Close, s("settings_close"))
                         } else {
-                            Icon(Icons.Default.Add, s("home_fab_add_space"))
+                            Icon(Icons.Filled.Add, s("home_fab_add_space"))
                         }
                     }
                 }
@@ -195,7 +195,7 @@ class HomeScreen : Screen {
                     message = s("home_empty_subtitle"),
                     action = {
                         Button(onClick = { navigator.push(CreateHouseholdScreen()) }) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(s("welcome_create"), fontWeight = FontWeight.SemiBold)
                         }

@@ -860,6 +860,13 @@ class TaskScreenModel(
                 _reassignState.value = TaskActionState.Error(
                     e.toUserMessage(settingsStore.getLanguage(), "task_error_reassigning")
                 )
+                // Mismo motivo que completeTask (ver su comentario, ~línea 725):
+                // un timeout AMBIGUOUS puede significar que el servidor ya aplicó
+                // la reasignación — recargar el detalle evita dejar la UI con el
+                // estado anterior obsoleto.
+                if (e.errorCategory() == ErrorCategory.AMBIGUOUS) {
+                    loadTaskDetail(householdId, taskId)
+                }
             }
         }
     }

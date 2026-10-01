@@ -133,7 +133,7 @@ class EditProfileScreen : Screen {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    imageVector = Icons.Filled.Close,
                                     contentDescription = s("error_icon_content_desc"),
                                     tint = MaterialTheme.colorScheme.error
                                 )
@@ -270,7 +270,7 @@ class EditProfileScreen : Screen {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    imageVector = Icons.Filled.Close,
                                     contentDescription = s("error_icon_content_desc"),
                                     tint = MaterialTheme.colorScheme.error
                                 )

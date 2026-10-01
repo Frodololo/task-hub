@@ -117,7 +117,17 @@ class JoinHouseholdScreen : Screen {
             Column(modifier = Modifier.fillMaxSize()) {
                 TaskHubTopBar(
                     title = s("welcome_join"),
-                    onBack = { navigator.pop() }
+                    onBack = {
+                        if (joinedHouseholdId != null) {
+                            // Volver al paso 1 sin perder el código ya validado,
+                            // en vez de salir del flujo de "unirse a hogar".
+                            joinedHouseholdId = null
+                            householdModel.reset()
+                            memberModel.reset()
+                        } else {
+                            navigator.pop()
+                        }
+                    }
                 )
                 Column(
                     modifier = Modifier
@@ -213,7 +223,7 @@ class JoinHouseholdScreen : Screen {
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = Icons.Filled.Close,
                                 contentDescription = s("error_icon_content_desc"),
                                 tint = MaterialTheme.colorScheme.error
                             )
@@ -322,7 +332,7 @@ class JoinHouseholdScreen : Screen {
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = Icons.Filled.Close,
                                 contentDescription = s("error_icon_content_desc"),
                                 tint = MaterialTheme.colorScheme.error
                             )
