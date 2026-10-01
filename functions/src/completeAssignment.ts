@@ -31,7 +31,7 @@ export interface CompleteAssignmentResponse {
 }
 
 export const completeAssignment = onCall<CompleteAssignmentRequest, Promise<CompleteAssignmentResponse>>(
-  { region: REGION },
+  { region: REGION, enforceAppCheck: true },
   async (request) => {
     const uid = requireAuth(request.auth?.uid);
     const { householdId, taskId, assignmentId, idempotencyKey } = request.data;

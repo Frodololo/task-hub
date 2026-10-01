@@ -23,7 +23,8 @@ import org.taskhub.ui.theme.semanticColors
 fun EmptyTasksIllustration(modifier: Modifier = Modifier) {
     val successColor = MaterialTheme.semanticColors.success
     // Colores del tema (no literales Teal*/Coral*) para que la ilustración
-    // se adapte a los 3 themes (DEFAULT, NATURALEZA, MINIMAL) en vez de
+    // se adapte a los 6 themes (DEFAULT, NATURALEZA, MINIMAL, OCEANO, ATARDECER,
+    // MEDIANOCHE) en vez de
     // quedar siempre teal/coral pase lo que elija el usuario en Ajustes —
     // mismo criterio ya aplicado en PointsBadge.badgeToneColors.
     val bgCircleColor = MaterialTheme.colorScheme.primaryContainer
@@ -94,7 +95,7 @@ fun EmptyTasksIllustration(modifier: Modifier = Modifier) {
 @Composable
 fun EmptyHouseholdsIllustration(modifier: Modifier = Modifier) {
     // Colores del tema (no literales Teal*/Coral*) — mismo criterio que
-    // [EmptyTasksIllustration], para que la casita se adapte a los 3 themes.
+    // [EmptyTasksIllustration], para que la casita se adapte a los 6 themes.
     val bgCircleColor = MaterialTheme.colorScheme.primaryContainer
     val roofColor = MaterialTheme.colorScheme.tertiary
     val bodyColor = MaterialTheme.colorScheme.secondary

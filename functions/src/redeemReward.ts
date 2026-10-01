@@ -34,7 +34,7 @@ export interface RedeemRewardResponse {
 }
 
 export const redeemReward = onCall<RedeemRewardRequest, Promise<RedeemRewardResponse>>(
-  { region: REGION },
+  { region: REGION, enforceAppCheck: true },
   async (request) => {
     const uid = requireAuth(request.auth?.uid);
     const { householdId, rewardId, memberId, idempotencyKey } = request.data;

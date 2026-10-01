@@ -55,7 +55,7 @@ export interface CompleteRecurringTaskResponse {
 }
 
 export const completeRecurringTask = onCall<CompleteRecurringTaskRequest, Promise<CompleteRecurringTaskResponse>>(
-  { region: REGION },
+  { region: REGION, enforceAppCheck: true },
   async (request) => {
     const uid = requireAuth(request.auth?.uid);
     const { householdId, taskId, memberId, expectedLastCompletedDate, idempotencyKey } = request.data;

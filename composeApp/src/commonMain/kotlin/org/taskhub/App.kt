@@ -35,6 +35,7 @@ import org.koin.compose.koinInject
 import org.taskhub.di.appModule
 import org.taskhub.network.FirestoreRepository
 import org.taskhub.platform.NotificationScheduler
+import org.taskhub.platform.bestEffort
 import org.taskhub.storage.HouseholdStore
 import org.taskhub.storage.SettingsStore
 import org.taskhub.ui.components.AppSettingsState
@@ -177,16 +178,13 @@ fun App(
             // añadía un round-trip de red entero, en serie, al final del
             // arranque en frío sin ninguna razón para no solaparlo).
             launch {
-                try {
+                // Offline/transitorio: se reintenta en el próximo arranque.
+                bestEffort(Unit, "App.saveFcmToken") {
                     val uid = repo.getLocalId()
                     val fcmToken = notificationScheduler.getFcmToken()
                     if (uid != null && fcmToken != null) {
                         repo.saveFcmToken(uid, fcmToken)
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // Offline/transitorio: se reintenta en el próximo arranque.
                 }
             }
             // Los tres pasos de abajo (resolver espacio Personal, asegurar
@@ -228,12 +226,9 @@ fun App(
                 // ── Asegurar que el espacio Personal tenga un miembro "Yo" ──
                 // Para que completar tareas sepa quién las hace (cubre migración).
                 if (!personalId.isNullOrBlank() && personalId != "personal-offline") {
-                    try {
+                    // No crítico: si falla (offline), se reintenta al reabrir
+                    bestEffort(Unit, "App.ensurePersonalMember") {
                         repo.ensurePersonalMember(personalId)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        // No crítico: si falla (offline), se reintenta al reabrir
                     }
                 }
 
@@ -265,12 +260,9 @@ fun App(
                 }
                 initialDeepLinkConsumedKey = deepLinkHouseholdId to deepLinkTaskId
                 if (!deepLinkNotificationId.isNullOrEmpty()) {
-                    try {
+                    // No crítico: solo afecta al estado "leída" in-app.
+                    bestEffort(Unit, "App.markNotificationRead") {
                         repo.markNotificationRead(deepLinkHouseholdId, deepLinkNotificationId)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        // No crítico: solo afecta al estado "leída" in-app.
                     }
                 }
             }
@@ -407,12 +399,9 @@ fun App(
                                             navigator.push(TaskDetailScreen(hid, deepLinkTaskId))
                                         }
                                         if (!deepLinkNotificationId.isNullOrEmpty()) {
-                                            try {
+                                            // No crítico: solo afecta al estado "leída" in-app.
+                                            bestEffort(Unit, "App.markNotificationRead") {
                                                 repo.markNotificationRead(hid, deepLinkNotificationId)
-                                            } catch (e: CancellationException) {
-                                                throw e
-                                            } catch (_: Exception) {
-                                                // No crítico: solo afecta al estado "leída" in-app.
                                             }
                                         }
                                     }

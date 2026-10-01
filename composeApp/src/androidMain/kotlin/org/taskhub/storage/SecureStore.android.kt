@@ -27,7 +27,13 @@ private const val SECURE_PREFS_FILE_NAME = "taskhub_secure_prefs"
  * usuario sin poder iniciar sesión.
  */
 actual fun createSecureStore(): SecureStore {
-    val context = AndroidContextHolder.context ?: return SettingsSecureStore(Settings())
+    val context = AndroidContextHolder.context ?: run {
+        // Mismo criterio que el fallback de Keystore de abajo (panel v4): si
+        // esto es alcanzable, el refresh token queda sin cifrar sin dejar
+        // rastro para diagnosticarlo (panel v23, Seguridad MENOR).
+        AppLog.w("SecureStore", "AndroidContextHolder.context aún no fijado, usando almacenamiento sin cifrar")
+        return SettingsSecureStore(Settings())
+    }
     return try {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

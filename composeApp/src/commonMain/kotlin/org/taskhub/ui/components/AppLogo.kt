@@ -32,10 +32,11 @@ fun AppLogo(
     modifier: Modifier = Modifier,
     size: androidx.compose.ui.unit.Dp = 40.dp,
     // Colores del tema (no literales Teal*/Coral*) para que el logo se adapte
-    // a los 3 temas (DEFAULT, NATURALEZA, MINIMAL) en vez de quedar siempre
-    // teal/coral — mismo criterio ya aplicado en EmptyStateIllustrations.kt.
+    // a los 6 temas (DEFAULT, NATURALEZA, MINIMAL, OCEANO, ATARDECER, MEDIANOCHE)
+    // en vez de quedar siempre teal/coral — mismo criterio ya aplicado en
+    // EmptyStateIllustrations.kt.
     // checkColor usa onPrimaryContainer (variante oscura), no primaryContainer
-    // directo: primaryContainer es un tono CLARO en los 3 temas (pensado para
+    // directo: primaryContainer es un tono CLARO en los 6 temas (pensado para
     // fondos, no para trazos finos sobre el propio canvas del logo).
     ringColor: Color = MaterialTheme.colorScheme.primary,
     checkColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,

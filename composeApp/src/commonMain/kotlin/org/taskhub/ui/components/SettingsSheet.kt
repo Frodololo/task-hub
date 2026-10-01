@@ -782,7 +782,7 @@ private fun SettingsSection(
     }
 }
 
-/** String i18n del nombre de cada [TaskHubThemeType], usado en el dropdown de tema. */
+/** String i18n del nombre de cada [TaskHubThemeType], usado en el [RadioOptionRow] del selector de tema. */
 private fun getThemeLabel(theme: TaskHubThemeType, s: (String) -> String): String =
     when (theme) {
         TaskHubThemeType.DEFAULT -> s("theme_default")
@@ -793,7 +793,7 @@ private fun getThemeLabel(theme: TaskHubThemeType, s: (String) -> String): Strin
         TaskHubThemeType.MIDNIGHT -> s("theme_midnight")
     }
 
-/** Color representativo de cada [TaskHubThemeType], usado en el swatch del dropdown de tema. */
+/** Color representativo de cada [TaskHubThemeType], usado en el swatch del [RadioOptionRow] del selector de tema. */
 private fun themeColorFor(theme: TaskHubThemeType): Color =
     when (theme) {
         TaskHubThemeType.DEFAULT -> Teal600

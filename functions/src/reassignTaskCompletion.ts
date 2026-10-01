@@ -7,6 +7,15 @@
  *
  * Requiere llamador `isTrusted` (owner o admin) — igual que hoy en
  * `firestore.rules` para corregir quién completó una tarea.
+ *
+ * A diferencia de `completeAssignment`/`donatePoints`/`redeemReward`, esta
+ * función NO usa `idempotencyKey`: es auto-idempotente por diseño porque lee
+ * `task.completedBy` fresco dentro de la propia transacción y solo mueve
+ * puntos si difiere de `newMemberId` (ver `oldMemberId !== newMemberId` más
+ * abajo) — un reintento con el mismo `newMemberId` tras un timeout ambiguo
+ * converge a no-op. Si en el futuro se cambia esa lectura por un
+ * `FieldValue.increment` ciego, esta propiedad se rompe y haría falta
+ * `idempotencyKey` como en sus hermanas (panel v23, hallazgo QA #8).
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { QueryDocumentSnapshot } from "firebase-admin/firestore";
@@ -27,7 +36,7 @@ export interface ReassignTaskCompletionResponse {
 }
 
 export const reassignTaskCompletion = onCall<ReassignTaskCompletionRequest, Promise<ReassignTaskCompletionResponse>>(
-  { region: REGION },
+  { region: REGION, enforceAppCheck: true },
   async (request) => {
     const uid = requireAuth(request.auth?.uid);
     const { householdId, taskId, newMemberId } = request.data;

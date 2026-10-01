@@ -72,7 +72,7 @@ data class CreateProfileScreen(val householdId: String) : Screen {
         // todavía no ha escrito nada — sigue siendo editable.
         LaunchedEffect(authState) {
             val signedIn = authState as? GoogleAuthState.SignedIn
-            if (displayName.isEmpty() && signedIn?.displayName != null) {
+            if (displayName.isEmpty() && !signedIn?.displayName.isNullOrBlank()) {
                 displayName = signedIn.displayName
                 nameAutoFilled = true
             }

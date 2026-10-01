@@ -49,7 +49,9 @@ private fun badgeToneColors(tone: BadgeTone): Pair<Color, Color> = when (tone) {
  * - [BadgeTone.Teal]: `primaryContainer`/`onPrimaryContainer`.
  * - [BadgeTone.Neutral]: `surfaceVariant`/`onSurfaceVariant`.
  * - [BadgeTone.Success]/[BadgeTone.Warning]/[BadgeTone.Info]: paleta semántica
- *   (`MaterialTheme.semanticColors`), coherente en los 3 themes.
+ *   (`MaterialTheme.semanticColors`), pensada para ser coherente en los 6 themes
+ *   (aunque en Naturaleza/Océano coincide visualmente con [BadgeTone.Teal]/[BadgeTone.Info]
+ *   por reutilizar el mismo swatch de marca — ver auditoría panel v23).
  *
  * @param text  Texto corto del badge (p. ej. "10 pts").
  * @param tone  Tono visual; [BadgeTone.Coral] por defecto (puntos/urgencia).

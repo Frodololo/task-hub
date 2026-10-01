@@ -682,7 +682,19 @@ service cloud.firestore {
     // la regla ahora lo hace cumplir también a nivel de datos.
     match /households/{hid}/rewards/{rid} {
       allow read: if isMember(hid) || isOwner(hid);
-      allow write: if isTrusted(hid);
+      // v23 (panel de expertos, Seguridad IMPORTANTE): `cost` sin validar
+      // permitía a un `isTrusted` crear/editar una recompensa con `cost`
+      // negativo — `redeemReward` (Cloud Function) solo comprueba
+      // `totalPoints < reward.cost`, que con `cost` negativo es siempre
+      // falso, así que el "canje" incrementaba `totalPoints` del miembro
+      // objetivo sin pasar por ningún tope de los que sí protegen
+      // `donatePoints`/`appreciateMember`. Mismo rango que `tasks/{tid}.points`,
+      // pero exigiendo estrictamente positivo (la UI ya invalida cost <= 0,
+      // ver CreateRewardScreen.kt).
+      allow delete: if isTrusted(hid);
+      allow create, update: if isTrusted(hid)
+        && request.resource.data.get('cost', 0) > 0
+        && request.resource.data.get('cost', 0) <= 100000;
     }
     match /households/{hid}/rewardRedemptions/{rrid} {
       allow read: if isMember(hid) || isOwner(hid);

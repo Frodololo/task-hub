@@ -388,6 +388,7 @@ data class TaskHistoryResponse(
  * [title]/[message] tal cual, igual que antes.
  */
 @Serializable
+@Immutable
 data class NotificationResponse(
     val id: String,
     val memberId: String,

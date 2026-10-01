@@ -41,7 +41,7 @@ export interface UndoTaskCompletionResponse {
 }
 
 export const undoTaskCompletion = onCall<UndoTaskCompletionRequest, Promise<UndoTaskCompletionResponse>>(
-  { region: REGION },
+  { region: REGION, enforceAppCheck: true },
   async (request) => {
     const uid = requireAuth(request.auth?.uid);
     const { householdId, taskId, completedAt } = request.data;
