@@ -137,6 +137,15 @@ entender *por qué* el código quedó como quedó en ciertos puntos.
   de ABI de klibs). Cierra con una página de Safari en blanco sin resolver
   (probable flakiness del Simulador) y una lista explícita de deuda técnica
   (`println` de diagnóstico sin retirar, `TEAM_ID` vacío).
+- **[ios-build-fix-post-merge-2026-10-02.md](ios-build-fix-post-merge-2026-10-02.md)**
+  — `main` dejó de compilar para iOS justo tras mergear el PR anterior: dos
+  desarrolladores tocaron las mismas funciones (`Platform.ios.kt`,
+  `GoogleIosSignInHelper.kt`) en paralelo. Un `@Volatile` sin import, y un
+  `topMostViewController()` reescrito con `UIWindow.isKeyWindow`/`keyWindow`
+  — símbolos que existen en el SDK real de iOS pero no están expuestos en
+  el binding de Kotlin/Native de este proyecto (confirmado contra el
+  compilador, no por inspección). Mismo patrón que el caso de
+  `popoverPresentationController` del informe anterior.
 - **[correcciones-2026-09-05-propuestas-aprobadas.md](correcciones-2026-09-05-propuestas-aprobadas.md)**
   y **[correcciones-2026-09-05-notificaciones.md](correcciones-2026-09-05-notificaciones.md)**
   — ronda de correcciones aprobadas y el cierre del flujo de notificaciones
