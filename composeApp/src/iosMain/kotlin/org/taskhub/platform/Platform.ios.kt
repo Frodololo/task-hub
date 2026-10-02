@@ -9,6 +9,7 @@ import platform.Security.kSecRandomDefault
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
+import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
 import platform.UIKit.popoverPresentationController
 
@@ -43,11 +44,28 @@ actual fun shareText(text: String, title: String): Boolean {
     return false
 }
 
-/** Recorre `presentedViewController` desde la key window hasta el controlador visible más arriba. */
+/**
+ * Recorre `presentedViewController` desde la ventana principal hasta el
+ * controlador visible más arriba.
+ *
+ * Toma la primera ventana de la primera escena conectada
+ * (`windows.filterIsInstance<UIWindow>().firstOrNull()`), en vez de filtrar
+ * por "key window": `UIWindow.isKeyWindow`/`keyWindow` existen en el SDK
+ * real de iOS, pero no están expuestos en el binding de Kotlin/Native de
+ * este `platform.UIKit` (confirmado: ni siquiera el import
+ * `platform.UIKit.keyWindow` resuelve) — para una app de una sola ventana
+ * como esta (sin soporte de Stage Manager/multi-window), la primera ventana
+ * de la escena ES la key window en la práctica, así que el resultado es el
+ * mismo sin depender de un símbolo no disponible. `windows` además devuelve
+ * `List<*>` (sin tipo genérico concreto en este binding — confirmado
+ * forzando un error de tipos deliberado contra el compilador), así que hace
+ * falta `filterIsInstance<UIWindow>()` para recuperar el tipo concreto en
+ * vez de un simple cast `as UIWindow` elemento a elemento.
+ */
 private fun topMostViewController(): UIViewController? {
     val window = UIApplication.sharedApplication.connectedScenes
         .filterIsInstance<UIWindowScene>()
-        .firstOrNull()?.windows?.firstOrNull { it.isKeyWindow }
+        .firstOrNull()?.windows?.filterIsInstance<UIWindow>()?.firstOrNull()
     var topController = window?.rootViewController
     while (topController?.presentedViewController != null) {
         topController = topController.presentedViewController
